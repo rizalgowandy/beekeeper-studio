@@ -1,0 +1,593 @@
+// Table Info
+.table-properties {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 0;
+  overflow: hidden;
+  .alert-wrapper {
+    padding: $gutter-w;
+  }
+  .table-properties-wrap {
+    height: 100%;
+    overflow: hidden;
+    overflow-y: auto;
+    margin: 0;
+  }
+  .table-info-table {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .table-info-table-wrap {
+    padding: 0 1.5rem 3rem;
+    overflow: hidden;
+    overflow-y: auto;
+  }
+  .table-properties-content {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: $gutter-w;
+    .card-flat {
+      padding: 0;
+    }
+  }
+  .table-subheader {
+    display: flex;
+    align-items: center;
+    padding: 0 $gutter-h;
+    min-height: 28px;
+    margin-top: $gutter-w * 2;
+    margin-bottom: $gutter-h;
+    .table-title {
+      display: flex;
+      flex-grow: 1;
+      align-items: baseline;
+      gap: 10px;
+      color: var(--text-contrast);
+      .filter-match-label {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+    }
+    h2 {
+      margin: 0;
+      // text-transform: uppercase;
+      // font-size: 0.9em;
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      padding: 0;
+      .btn-icon {
+        margin-left: $gutter-h;
+      }
+    }
+
+    // Toolbar row: title + search | refresh / copy / add
+    .table-info-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      min-width: 0;
+
+      .toolbar-btn {
+        margin: 0;
+        cursor: pointer;
+        @include noselect;
+      }
+
+      // Both sides of the row are pinned to 30px so opening the search
+      // (26px icon -> 30px field) never changes the row's height.
+      .toolbar-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+        height: 30px;
+        color: var(--text-contrast);
+        h2 {
+          margin: 0;
+          white-space: nowrap;
+        }
+      }
+
+      .search-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        &:hover, &:focus {
+          background: var(--gray-a3);
+        }
+        .material-icons {
+          font-size: 16px;
+          color: var(--text-muted);
+        }
+      }
+
+      .table-info-filter {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 30px;
+        // Width comes from the container, never from the field's contents,
+        // so the box stays put while the count and clear button appear.
+        flex: 1;
+        min-width: 0;
+        max-width: 380px;
+        padding: 0 8px 0 10px;
+        background: var(--input-bg);
+        border: var(--input-border);
+        border-radius: var(--input-border-radius);
+        transition: border-color 0.15s ease-in-out;
+        &:focus-within {
+          border: var(--input-border-focus);
+        }
+        .search-icon {
+          flex: none;
+          font-size: 16px;
+          color: var(--text-muted);
+        }
+        .filter-input {
+          flex: 1;
+          min-width: 0;
+          height: 100%;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          box-shadow: none;
+          font-size: 13px;
+          color: var(--text-contrast);
+          &:focus {
+            border: 0;
+            box-shadow: none;
+          }
+        }
+        .filter-matches {
+          flex: none;
+          min-width: 3em;
+          text-align: right;
+          font-size: 12px;
+          color: var(--text-muted);
+          white-space: nowrap;
+          &.is-hidden {
+            visibility: hidden;
+          }
+        }
+        .clear-filter {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: none;
+          width: 16px;
+          height: 16px;
+          padding: 0;
+          border: 0;
+          border-radius: 999px;
+          background: transparent;
+          color: var(--text-muted);
+          cursor: pointer;
+          &.is-hidden {
+            visibility: hidden;
+          }
+          &:hover {
+            background: var(--gray-a5);
+            color: var(--text-contrast);
+          }
+          i {
+            font-size: 12px;
+          }
+        }
+      }
+
+      .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        flex: none;
+        height: 30px;
+      }
+
+      .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 30px;
+        line-height: 28px;
+        padding: 0 7px 0 8px;
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        box-shadow: none;
+        color: var(--text);
+        &:hover, &:focus {
+          background: var(--gray-a3);
+          color: var(--text-contrast);
+        }
+        .material-icons {
+          font-size: 15px;
+          font-weight: normal;
+          color: var(--text-muted);
+        }
+        .material-icons.dropdown-icon {
+          font-size: 14px;
+          margin-left: -2px;
+        }
+      }
+
+      .refresh-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        &:hover, &:focus {
+          background: var(--gray-a3);
+        }
+        .material-icons {
+          font-size: 16px;
+          color: var(--text-muted);
+        }
+      }
+
+      // No divider before the add button: separation comes from the gap and
+      // the add button being the only filled control.
+      .add-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        margin-left: 8px;
+        padding: 0 13px 0 10px;
+        border-radius: 6px;
+        background: var(--primary-solid-bg);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--primary-contrast);
+        &:hover, &:focus {
+          background: var(--primary-solid-bg-hover);
+          color: var(--primary-contrast);
+        }
+        .material-icons {
+          font-size: 15px;
+          color: var(--primary-contrast);
+        }
+      }
+    }
+  }
+
+  // Table Info
+  // --------------------------------
+  // Table Info Header
+  .table-info {
+    padding-top: $gutter-w * 4;
+    .table-name {
+      padding: 0 $gutter-w;
+      margin: 0 - $gutter-h;
+      margin-bottom: $gutter-h;
+      display: flex;
+      align-items: center;
+      .item-icon {
+        font-size: 1.6rem;
+        margin-right: $gutter-w;
+      }
+    }
+    .table-meta {
+      padding: $gutter-w;
+      margin: 0 - $gutter-h;
+      color: var(--text-muted);
+    }
+    .table-description {
+      position: relative;
+      padding: $gutter-h $gutter-w;
+      margin: 0 (-$gutter-h) 0;
+      border-radius: 3px;
+      cursor: pointer;
+      min-height: 60px;
+      &:hover {
+        background: var(--gray-a2);
+        .material-icons {
+          display: inline-block;
+        }
+      }
+      &.edit-success {
+        background-color: var(--table-row-added-bg);
+      }
+      &.edit-error {
+        background-color: var(--table-row-error-bg);
+      }
+      .material-icons {
+        display: none;
+        position: absolute;
+        top: $gutter-h;
+        right: $gutter-h;
+        opacity: 0.58;
+      }
+    }
+    .table-description-wrap {
+      h1, h2, h3, h4, h5, h5, p {
+        margin: 0 0 $gutter-h;
+      }
+    }
+    .table-description-edit {
+      position: relative;
+      margin-top: $gutter-w;
+      padding-bottom: 3rem;
+      textarea {
+        min-height: 120px;
+        padding: $gutter-h $gutter-w;
+        resize: vertical;
+      }
+      span.markdown {
+        content: 'markdown';
+        font-size: 10px;
+        color: var(--text-muted);
+        display: inline-block;
+        position: absolute;
+        top: $gutter-h;
+        right: $gutter-h;
+        padding: 0 $gutter-h;
+        line-height: 1.8;
+        // background: rgba($theme-base, 0.1);
+        box-shadow: 0 0 0 1px var(--border-subtle);
+        border-radius: 4px;
+      }
+    }
+    .table-description-actions {
+      position: absolute;
+      right: $gutter-h * 1.25;
+      bottom: $gutter-h * 1.25;
+      .btn {
+        min-width: min-content;
+      }
+    }
+  }
+
+  // Table Info Content
+  .table-info-content {
+    width: 100%;
+    .form-group.inline {
+      > * {
+        padding-bottom: 0;
+      }
+      label {
+        color: var(--text-muted);
+        min-width: 110px;
+      }
+      select, textarea {
+        min-width: 200px;
+        width: 100%!important;
+      }
+      select {
+        max-width: 220px;
+      }
+    }
+    textarea {
+      height: auto;
+    }
+  }
+
+  .table-schema {
+    .tabulator-table {
+      .yesno-icon {
+        float:right;
+      }
+
+      .tabulator-cell:not(.tabulator-editable) {
+        color: var(--text-muted);
+        &:hover {
+          background-color: transparent;
+        }
+      }
+    }
+  }
+}
+
+
+// Tabulator Styling
+// ------------------------------
+.table-properties {
+
+  $row-height:             38px;
+  $cell-font-size:         13px;
+  $cell-padding:           0.8rem;
+  $row-gutter:             3px;
+  $btn-icon-size:           28px;
+
+  .table-properties-wrap {
+
+    // Schema Header
+    .schema-header {
+      .btn-icon {
+        width: $btn-icon-size;
+        height: $btn-icon-size;
+        min-width: $btn-icon-size;
+      }
+      .title {
+        margin: 0;
+      }
+    }
+
+    // Tabulator Header Row
+    .tabulator {
+      .tabulator-header {
+        .tabulator-col {
+          padding: 0 $cell-padding;
+          font-size: ($cell-font-size * 0.9);
+          &.tabulator-frozen {
+            border-right: 0;
+          }
+        }
+      }
+    }
+
+    // Field Rows
+    .tabulator-row {
+      margin: $row-gutter 0;
+      .tabulator-cell {
+        min-height: $row-height;
+        height: $row-height;
+        line-height: $row-height;
+        padding: 0 $cell-padding;
+        font-size: $cell-font-size;
+        pre, input:not([type="checkbox"]) {
+          font-size: $cell-font-size;
+          line-height: $row-height;
+          min-height: $row-height;
+        }
+        input {
+          border: 0;
+          &[type="search"] {
+            line-height: $row-height;
+            padding-bottom: 1px!important;
+          }
+        }
+        .nullible-input {
+          padding-right: 18px!important;
+        }
+        &.tabulator-editing {
+          min-height: $row-height;
+          height: $row-height;
+          line-height: $row-height;
+          padding: 0!important;
+          // Make checkboxes behave correctly
+          .tabulator-bks-checkbox {
+            padding: calc($cell-padding / 2);
+          }
+          pre, input:not([type="checkbox"]) {
+            padding: 0 $cell-padding;
+          }
+        }
+        &.edited {
+          .tabulator-bks-checkbox {
+            input[type="checkbox"] {
+              &:active,
+              &:checked,
+              &:checked:active {
+                background: var(--checkbox-checked-bg);
+                box-shadow: none;
+              }
+            }
+          }
+        }
+        .tabulator-bks-checkbox {
+          &.read-only {
+            input[type="checkbox"] {
+              background: transparent!important;
+              box-shadow: none!important;
+              &:after {
+                color: var(--text-contrast);
+                font-size: 20px;
+              }
+              &[disabled="disabled"] {
+                box-shadow: none;
+              }
+            }
+          }
+        }
+        &.no-padding {
+          > * {
+            margin: 0 $cell-padding;
+          }
+        }
+
+        // Remove Cell
+        &.remove-btn {
+          &:hover {
+            div.dynamic-action:after {
+              color: var(--text-contrast);
+            }
+          }
+          .material-icons {
+            line-height: $row-height;
+          }
+        }
+
+        // Make checkboxes behave correctly
+        .tabulator-bks-checkbox {
+          height: $row-height;
+        }
+
+        input, textarea {
+          height: $row-height;
+        }
+      }
+    }
+
+    // Resize Handle
+    .tabulator-row {
+      .tabulator-frozen {
+        &.tabulator-row-handle {
+          .tabulator-row-handle-box {
+            margin-left: 0;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Editing
+// -------------------------------------
+.tabulator-table {
+  .tabulator-row {
+
+    div.dynamic-action:after {
+      line-height: $row-height;
+      cursor: pointer;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      font-family: 'Material Icons';
+      color: var(--text-muted);
+      content: "close";
+      transition: color 0.2s ease-in-out;
+      font-size: 18px;
+    }
+
+    &.deleted {
+      div.dynamic-action::after {
+        content: "undo";
+      }
+    }
+
+    &.tabulator-row-even {
+      &.inserted {
+        background-color: var(--table-row-added-bg)!important;
+      }
+      &.inserted, &.deleted {
+        .tabulator-cell {
+          cursor: pointer;
+          &.edited {
+            background: var(--gray-a3);
+          }
+          &.edited:hover {
+            background: var(--gray-a5);
+          }
+        }
+      }
+    }
+    .tabulator-cell {
+      &.no-edit-highlight {
+        &.edited {
+          box-shadow: none!important;
+        }
+      }
+    }
+  }
+}
+
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable.tabulator-col-sorter-element:hover {
+  background-color: var(--gray-a2);
+}
+

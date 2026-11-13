@@ -1,0 +1,19 @@
+.diff-viewer {
+  font-family: $font-family-mono;
+  background: var(--editor-bg);
+  margin-left: -($gutter-w * 1.5);
+  margin-right: -($gutter-w * 1.5);
+  padding: $gutter-w * 1.25;
+  del {
+    background: var(--danger-a8)!important;
+  }
+  ins {
+    background: var(--success-a8)!important;
+  }
+}
+
+
+.diff-modal .v--modal {
+  height: auto!important;
+  min-height: 150px;
+}

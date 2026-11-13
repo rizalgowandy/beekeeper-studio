@@ -1,0 +1,178 @@
+<template>
+  <div v-if="false" />
+</template>
+<script lang="ts">
+import Vue from 'vue'
+import Noty from 'noty'
+import { mapGetters, mapActions, mapState } from 'vuex'
+import logoUrl from '@/assets/logo.svg'
+import { SmartLocalStorage } from '@/common/LocalStorage'
+import {
+  ARM64_BUILD_DOCS_URL,
+  ARM64_BUILD_NOTICE_DISMISSED_KEY,
+  arm64BuildDownloadUrl,
+  shouldOfferArm64Build,
+} from '@/common/arm64BuildNotice'
+
+export default Vue.extend({
+  data: () => {
+    return {
+      notificationInterval: null,
+      timeoutID: null,
+      isShowingOnboardingNoty: false,
+      upsellNotificationOptions: {
+        text: "Upgrade for features like the JSON row viewer, AI shell, & NoSQL support. All purchases come with a <strong>lifetime usage license</strong>.",
+        timeout: 1000 * 60 * 5,
+        queue: "upsell",
+        killer: 'upsell',
+        layout: 'bottomRight',
+        closeWith: ['button'],
+        buttons: [
+          Noty.button('Close', 'btn btn-flat', () => Noty.closeAll('upsell')),
+          Noty.button('Get Started', 'btn btn-primary', () => window.main.openExternally('https://beekeeperstudio.io/pricing/'))
+        ]
+      },
+      onboardingNoty: null as Noty | null,
+    }
+  },
+  computed: {
+    ...mapGetters({
+      'isCommunity': 'isCommunity',
+    }),
+    ...mapGetters(['onboardingNotyShown', 'connected']),
+    /**
+     * The trial-ended and lifetime-version dialogs are decision points that
+     * cannot be dismissed, so nothing should be stacked on top of them: an
+     * upsell toast over a full upsell dialog is both redundant and in the way.
+     */
+    ...mapState('licenses', { blockingDialog: (state: any) => state.blockingDialog }),
+    ...mapState(['connected']),
+  },
+  watch: {
+    isCommunity() {
+      this.initNotifyInterval()
+    },
+    connected() {
+      if (this.connected && !this.onboardingNotyShown) {
+        this.setOnboardingNotyShown()
+      }
+      this.noty?.close();
+    },
+  },
+  methods: {
+    ...mapActions(['setOnboardingNotyShown']),
+    initNotifyInterval() {
+      const intervalTime = 1000 * 60 * 60 * 3
+      if (this.notificationInterval) {
+        clearInterval(this.notificationInterval)
+        this.notificationInterval = null
+      }
+      if (this.timeoutID) {
+        clearTimeout(this.timeoutID)
+        this.timeoutID = null
+      }
+      if (!this.isCommunity) {
+        return
+      }
+
+      this.notificationInterval = setInterval(() => {
+        this.notifyUpsell()
+      }, intervalTime)
+
+      this.timeoutID = setTimeout(() => {
+        this.notifyUpsell()
+      }, 1000 * 60 * 5)
+    },
+    notifyUpsell() {
+      if (this.isShowingOnboardingNoty || this.blockingDialog) {
+        return
+      }
+      new Noty(this.upsellNotificationOptions).show()
+    },
+    async notifyOnboarding() {
+      Noty.closeAll('onboarding');
+
+      if (this.onboardingNotyShown) {
+        return;
+      }
+
+      // First time user will get a demo query tab (cheese query), so if the
+      // tabCount is more than 1, then the user has used the app before.
+      const tabCount = await this.$util.send("appdb/tabs/count", {
+        withDeleted: true,
+      });
+
+      if (tabCount > 1) {
+        this.setOnboardingNotyShown();
+        return;
+      }
+
+      const n = new Noty({
+        text: `<div class="noty-onboarding-title">
+                <img class="noty-onboarding-logo" src="${logoUrl}">
+                Welcome to Beekeeper Studio!
+              </div>
+              <div class="noty-onboarding-body">
+                Double click the demo database to explore app features
+                or read the <a class="link" href="https://docs.beekeeperstudio.io/getting-started-guide/">getting started guide</a>.
+              </div>`,
+        closeWith: ['button'],
+        layout: 'bottomRight',
+        timeout: false,
+        queue: 'onboarding',
+        killer: 'upsell',
+        buttons: [
+          Noty.button("Don't show again", 'btn btn-flat', () => {
+            this.setOnboardingNotyShown()
+            n.close();
+          }),
+        ],
+        callbacks: {
+          beforeShow: () => {
+            this.isShowingOnboardingNoty = true
+          },
+          afterClose: () => {
+            this.isShowingOnboardingNoty = false
+            this.onboardingNoty = null
+          }
+        },
+      });
+      n.show();
+      this.noty = n;
+    },
+    notifyArm64Build() {
+      const dismissed = SmartLocalStorage.getBool(ARM64_BUILD_NOTICE_DISMISSED_KEY, false)
+      if (!shouldOfferArm64Build(this.$config, dismissed)) return
+
+      const n = new Noty({
+        text: `<div class="noty-onboarding-title">ARM64 version available</div>
+              <div class="noty-onboarding-body">
+                This is the x64 version of Beekeeper Studio, running under emulation on an ARM PC.
+                The ARM64 version runs natively, so it's faster and uses less battery.
+                <a class="link" href="${ARM64_BUILD_DOCS_URL}">What's different on ARM64</a>
+              </div>`,
+        closeWith: ['button'],
+        layout: 'bottomRight',
+        timeout: false,
+        queue: 'arm64-build',
+        buttons: [
+          Noty.button("Don't show again", 'btn btn-flat', () => {
+            SmartLocalStorage.setBool(ARM64_BUILD_NOTICE_DISMISSED_KEY, true)
+            n.close()
+          }),
+          Noty.button('Download', 'btn btn-primary', () => {
+            window.main.openExternally(arm64BuildDownloadUrl(this.$config))
+            n.close()
+          }),
+        ],
+      })
+      n.show()
+    },
+  },
+  mounted() {
+    this.initNotifyInterval()
+    this.notifyOnboarding()
+    this.notifyArm64Build()
+  }
+})
+</script>

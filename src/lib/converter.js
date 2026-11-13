@@ -1,9 +1,0 @@
-export default {
-    dataToTabulator() {
-
-    },
-
-    dataToColumns() {
-
-    }
-}

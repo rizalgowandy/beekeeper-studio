@@ -1,8 +1,13 @@
+.turbo/
 .idea/
+.cache/
+.claude/
 .vscode/
-data/
+./data/
+.local
 node_modules/
 dist/
+site/
 tmp/
 temp/
 test.db
@@ -15,3 +20,17 @@ yarn-error.log
 .package-lock.json
 .secrets
 .env
+.instant/
+cli.zip
+apps/studio/test-results
+*.db
+*.log
+*.orig
+surreal_data/
+todo.txt
+done.txt
+local.config.ini
+
+# Python bytecode (mkdocs hooks in bin/mkdocs_hooks)
+__pycache__/
+*.pyc

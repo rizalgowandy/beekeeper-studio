@@ -1,0 +1,114 @@
+import { FieldPacket, OkPacket, Pool, RowDataPacket } from "mysql2/typings/mysql";
+import PoolConnection from "mysql2/typings/mysql/lib/PoolConnection";
+import Query from "mysql2/typings/mysql/lib/protocol/sequences/Query";
+import { BeeCursor, TableColumn } from "../../models";
+import { waitFor } from "../base/wait";
+import _ from "lodash";
+import rawLog from '@bksLogger'
+import { MySqlConnector } from "./MySqlConnector";
+
+const log = rawLog.scope('mysqlcursor');
+
+interface MiniCursor {
+  q: Query.Query,
+  connection: PoolConnection.PoolConnection
+}
+
+export class MysqlCursor extends BeeCursor {
+
+  private cursor?: MiniCursor
+  private rowBuffer: any[][] = []
+  private bufferReady = false;
+  private end = false
+  private error?: Error
+  private fields: FieldPacket[]
+
+  constructor(
+    private connector: MySqlConnector,
+    private query: string,
+    private params: string[],
+    chunkSize: number
+  ) {
+    super(chunkSize)
+
+  }
+
+  get columns(): TableColumn[] | null {
+    if (!this.fields) return null;
+    return this.fields.map((f) => ({
+      columnName: f.name,
+      dataType: f.typeName
+    }))
+  }
+
+  start(): Promise<void> {
+    log.debug("start")
+    const promise = new Promise<void>((resolve, reject) => {
+      this.connector.getRawConnection().then((connection) => {
+        connection.release
+        const q = connection.query({ sql: this.query, values: this.params, rowsAsArray: true })
+        q.on('result', this.handleRow.bind(this) )
+        q.on('fields', this.handleFields.bind(this))
+        q.on('end', this.handleEnd.bind(this) )
+        q.on('error', this.handleError.bind(this))
+        this.cursor = { connection: connection, q: q}
+        resolve()
+      }).catch((err) => reject(err))
+    })
+    return promise
+  }
+
+  private handleFields(fields: FieldPacket[]) {
+    if (fields && _.isArray(fields)) {
+      this.fields = fields;
+    }
+  }
+
+  private handleRow(row: RowDataPacket | OkPacket) {
+    if ("fieldCount" in row) return;
+    this.rowBuffer.push(row as any[])
+    if (this.rowBuffer.length >= this.chunkSize) {
+      this.cursor?.connection.pause()
+      this.bufferReady = true
+    }
+  }
+
+  private handleEnd(){
+    log.debug("handling end")
+    this.end = true
+    this.cursor?.connection.destroy()
+  }
+
+  private handleError(error: Error) {
+    log.debug("handling error")
+    this.error = error
+    console.error(error)
+  }
+
+  private pop() {
+    const result = this.rowBuffer
+    this.rowBuffer = []
+    return result
+  }
+
+  private resume() {
+    this.bufferReady = false
+    this.cursor?.connection.resume()
+  }
+
+  async read(): Promise<any[][]> {
+    await waitFor(() => this.bufferReady || this.end || !!this.error)
+    if (this.error) throw this.error
+    if (this.end) return this.pop()
+    const results = this.pop()
+    this.resume()
+    return results
+  }
+
+  async cancel(): Promise<void> {
+    log.debug('cursor cancelled')
+    this.cursor?.connection.destroy()
+
+  }
+
+}

@@ -1,0 +1,276 @@
+---
+title: Troubleshooting
+summary: "How to debug issues with Beekeeper Studio"
+old_url: "https://docs.beekeeperstudio.io/docs/troubleshooting"
+---
+
+
+Hopefully you can solve your problems with the details below. If not please  [Contact Support](./contact-support.md) and we'll try our best to help.
+
+
+## Don't be shy, say hi!
+
+Feel free to file an issue or start a discussion, even if you're not sure if something is wrong. We're a super nice community, and we all help each other out.
+
+- [File an issue](https://github.com/beekeeper-studio/beekeeper-studio/issues/new/choose)
+- [Start a discussion](https://github.com/beekeeper-studio/beekeeper-studio/discussions/new)
+
+
+## Tools for taking screen recordings when reporting issues.
+
+Screen recordings are SUPER helpful when a problem is hard for me to replicate.
+
+Here are the tooks I recommend for taking quick and easy screen captures as GIF or MKV files:
+
+1. MacOS: [Kap](https://getkap.co/) - it's fully open source. It works great. I use this.
+2. Linux: [Peek](https://github.com/phw/peek) - also fully open source. Works great. I use this.
+3. Windows: [Captura](https://github.com/MathewSachin/Captura) - Also open source, also works great.
+
+Just copy/paste the screen recording into your Github issue and GitHub will figure out the rest.
+
+
+## How to Debug Beekeeper Studio { #debugging-ref }
+
+### Check Developer Tools for errors
+
+Click on `help -> show developer tools`, then at the top right of the console change the 'levels' dropdown to 'errors' only.
+
+Are there any errors here? Take a screenshot and attach them to a new issue!
+
+### Enable Debug Mode and Collect Logs
+
+You can find logs for Beekeeper Studio in these directories:
+
+- Linux: `~/.config/beekeeper-studio/logs/{process}.log`
+- macOS: `~/Library/Logs/beekeeper-studio/{process}.log`
+- Windows: `%USERPROFILE%\AppData\Roaming\beekeeper-studio\logs\{process}.log`
+
+`{process}` is `main` for the Electron main process and `utility` for the
+database driver process.
+
+By default, packaged builds only write `warn` and `error` messages to disk.
+Sensitive fields (passwords, tokens, private keys) are redacted before they
+hit the log file.
+
+To collect more detail for a bug report, restart the app with one of the
+following environment variables set:
+
+| Variable                | Effect                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `DEBUG=1`               | Quick toggle. Drops the log level to `silly` (everything) and opens DevTools on launch. |
+| `BKS_LOG_LEVEL=<level>` | Sets the log level explicitly. Valid values: `error`, `warn`, `info`, `verbose`, `debug`, `silly`. Takes precedence over `DEBUG`. |
+| `BKS_LOG_NO_REDACT=1`   | Disables the credential redacter so passwords, tokens, and similar fields appear verbatim. Local debugging only — never set this on a machine whose logs might be shared. |
+
+`silly` is the most verbose; `error` is the quietest. Most users investigating
+a bug should start with `BKS_LOG_LEVEL=debug` or `DEBUG=1`.
+
+Example invocations:
+
+```bash
+# Linux / macOS
+BKS_LOG_LEVEL=debug beekeeper-studio
+
+# Just turn everything on
+DEBUG=1 beekeeper-studio
+```
+
+```cmd
+:: Windows (cmd)
+set BKS_LOG_LEVEL=debug
+"Beekeeper Studio.exe"
+```
+
+```powershell
+# Windows (PowerShell)
+$env:BKS_LOG_LEVEL = "debug"
+& "Beekeeper Studio.exe"
+```
+
+Reproduce the issue, then attach the contents of `main.log` and `utility.log`
+to your bug report.
+
+
+## MySQL
+
+* This section also applies to MariaDB
+
+### I can't create a descending index
+
+Before version 8.0 MySQL did not support `DESC` indexes, but it did support the syntax.
+
+This is a 'feature' of MySQL to make it more compatible with other engines.
+
+If you edit your indexes in Beekeeper Studio and create a `DESC` index it will simply create a `ASC` index instead.
+
+As of version 8.0 this issue has been solved.
+
+### I get a SQL syntax error when trying to create a stored procedure
+
+When using the `mysql` command line client you need to remap delimiters using `DELIMITER`, however this syntax isn't supported by MySQL server itself, so it errors when run through Beekeeper Studio.
+
+You'll likely get an error like `You have an error in your SQL syntax`. Simply remove the delimiter statements to fix it.
+
+For example, change this:
+```sql
+DELIMITER //
+
+CREATE PROCEDURE simpleproc (OUT param1 INT)
+ BEGIN
+  SELECT COUNT(*) INTO param1 FROM t;
+ END;
+//
+
+DELIMITER ;
+```
+
+To this:
+
+```sql
+CREATE PROCEDURE simpleproc (OUT param1 INT)
+ BEGIN
+  SELECT COUNT(*) INTO param1 FROM t;
+ END;
+```
+
+
+### Access denied for user (using password: YES)
+
+If you get an `Access denied for user 'xxx' (using password: YES)` error when connecting, try toggling **Enable SSL** on in the connection settings.
+
+Some MySQL servers (including Google Cloud SQL) require SSL for the user account.
+
+## SQLite
+
+### No such column: x
+
+If you are writing a SQL query for SQLite and receive the error `no such column`, the issue is that you are using double quotes `"` to identify strings rather than single quotes `'`.
+
+- Double quotes are for identifiers (tables, columns, functions, etc)
+- Single quotes are for strings.
+
+
+SQLite originally allowed both single quoted (`'some string'`) and double quoted strings (`"some string"`) in order to stay compatible with MySQL, but the maintainers have since stated that they regret this move, and now recommend that [sqlite be compiled with this feature turned off](https://www.sqlite.org/compile.html#recommended_compile_time_options). Beekeeper Studio follows the recommended compilation options.
+
+To fix this problem, change your double quoted strings to single quoted strings:
+
+```sql
+-- this won't work
+select "string" as my_column from foo
+
+-- this will work
+select 'string' as my_column from foo
+
+```
+
+
+
+### I get 'permission denied' or 'unable to open database file' when trying to access a SQLite database
+
+This is usually caused by the sandboxed packaging format (Snap or Flatpak) not having permission to access the file's location.
+
+**Flatpak users:**
+
+Flatpak restricts file access by default. The file picker may show a sandboxed path (e.g. `/run/user/1000/...`) instead of the real path. To grant Beekeeper Studio access to your files:
+
+```bash
+sudo flatpak override io.beekeeperstudio.Studio --filesystem=host
+```
+
+**Snap users:**
+
+If the database is on an external or removable drive, you need to grant extra permissions:
+
+```bash
+sudo snap connect beekeeper-studio:removable-media :removable-media
+```
+
+If neither of these applies, please [open a ticket][bug] and we'll try to help you debug the problem.
+
+[bug]: https://github.com/beekeeper-studio/beekeeper-studio/issues/new?template=bug_report.md&title=BUG:
+
+## PostgreSQL
+
+Please note that Beekeeper Studio only officially supports Postgres 9.3+, although older versions may mostly work.
+
+### I get a `column does not exist` error, but the column does exist!
+
+Postgres is weird with case sensitivity. This is usually the cause of the dreaded `column does not exist` error.
+
+Postgres has two behaviors with column names:
+- If you define your column name without double quotes postgres downcases the name.
+- If you define your column name WITH double quotes, you need to use double quotes forever.
+
+For example:
+
+In this table:
+
+```sql
+CREATE table foo("myColumn" int);
+```
+
+- This won't work: `select myColumn from foo`
+- This will works: `select "myColumn" from foo`
+
+See [this StackOverflow answer](https://stackoverflow.com/a/20880247/18818) or [this section in the PostgreSQL manual](https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS)
+
+## Cloud Databases (Google Cloud SQL, Amazon RDS)
+
+### Connections drop after IP allowlist expires
+
+If you use a time-limited IP allowlist to connect to your database (for example, `gcloud sql connect` which allowlists your IP for 5 minutes), you may find that queries fail after the allowlist window closes.
+
+Beekeeper Studio uses a connection pool that keeps connections alive while idle. By default, idle connections are dropped after 20 seconds. Once dropped, the pool creates new connections on demand — but if your IP is no longer allowlisted, those new connections will be rejected.
+
+To work around this, you can increase the idle timeout in your [user configuration file](../user_guide/configuration.md) so that connections stay alive longer:
+
+```ini
+; Keep idle connections alive for 5 minutes instead of the default 20 seconds.
+; Adjust this to match your IP allowlist window.
+
+[db.postgres]
+idleTimeout = 300000
+
+[db.mysql]
+idleTimeout = 300000
+```
+
+For a more permanent solution, consider using an [SSH tunnel](../user_guide/connecting/connecting.md#ssh) to connect to your database instead of relying on IP allowlisting.
+
+## Linux (Wayland)
+
+### Weird colors on Wayland (wrong saturation, contrast, or readability)
+
+If colors look wrong when running Beekeeper Studio on Wayland — for example oranges appearing yellow, greys looking almost black, whites being overly bright, or text being hard to read — this is caused by a [Chromium/Electron bug with the Wayland color management protocol](https://github.com/electron/electron/issues/49566).
+
+To fix this, add the following flag to your `~/.config/bks-flags.conf` file:
+
+```bash
+echo "--disable-features=WaylandWpColorManagerV1" >> ~/.config/bks-flags.conf
+```
+
+Then restart Beekeeper Studio. See [Linux Installation - Wayland support](../installation/linux.md#wayland-support-including-fractional-scaling) for more details on configuring Wayland flags.
+
+## Linux (Snap)
+
+### The Filepicker shows 'little rectangles' instead of a font
+![Image Alt Tag](../assets/images/troubleshooting-58.png)
+
+This is an issue with `snapd` itself and how it isolates apps from font config (or doesn't, in this case). This seems to come up with Arch, Manjaro, and Fedora, I guess because the snap team mostly cares about snaps working in Ubuntu.
+
+Workaround:
+
+```bash
+sudo rm -f /var/cache/fontconfig/*
+rm -f ~/.cache/fontconfig
+```
+
+See for reference:
+- [Filed bug with snapd](https://bugs.launchpad.net/snappy/+bug/1916816)
+- [Discussion on snapcraft forums](https://forum.snapcraft.io/t/snap-store-fonts-on-arch-linux-are-merely-empty-rectangles/15373/9)
+
+## Windows
+
+### The App is stuck running in the background
+If you've just recently installed the app on Windows and the app refuses to start (with your task manager reporting that it is running), you may need to install the [MSVC Redistributables](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) for your architecture.
+
+This is an issue with one of our native dependencies, and we are working on a more permanent fix for this issue in the installer.

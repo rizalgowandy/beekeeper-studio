@@ -1,0 +1,42 @@
+name: Deploy Docs to Netlify
+
+permissions:
+  contents: read
+  deployments: write
+
+on:
+  push:
+    branches:
+      - master  # or your default branch
+    paths-ignore:
+      - 'apps/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      MISE_ENABLE_TOOLS: python
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: jdx/mise-action@v5
+
+    - name: Install dependencies
+      run: python -m pip install -r requirements.txt
+
+    - name: Build site with mkdocs
+      run: python -m mkdocs build --strict
+
+    - name: Upload to Netlify
+      uses: nwtgck/actions-netlify@v2.0
+      with:
+        publish-dir: './site'
+        production-branch: master  # or your default branch
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        deploy-message: Deploy from GitHub Actions
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.DOCS_SITE_ID }}

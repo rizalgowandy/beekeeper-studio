@@ -1,0 +1,14 @@
+.BksMongoShell {
+  .cm-mongo-prompt > span {
+    color: var(--mongo-shell-mongo-prompt-fg);
+    font-weight: bold;
+  }
+
+  .ansi-output {
+    user-select: text !important;
+    white-space: pre-wrap;
+    color: var(--mongo-shell-ansi-output-fg);
+    padding: 4px;
+    margin: 0;
+  }
+}

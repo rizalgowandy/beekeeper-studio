@@ -1,0 +1,178 @@
+.query-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--editor-bg);
+  .editor {
+    width: 100%;
+    height: 400px;
+    box-shadow: none;
+    border: 0;
+    outline: none;
+  }
+  .top-panel, .bottom-panel {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 200px;
+  }
+  .bottom-panel {
+    > .layout-center {
+      overflow: hidden;
+    }
+  }
+
+  .not-supported {
+    position: absolute;
+    z-index: 10;
+    inset: 0;
+    top: var(--header-title-height);
+    backdrop-filter: blur(6px);
+    background-color: var(--overlay-subtle-bg);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1rem;
+
+    .title {
+      display: flex;
+      flex-direction: row;
+      font-weight: 700;
+      align-items: center;
+      i.material-icons {
+        margin-right: 0.5rem;
+      }
+    }
+
+    .body {
+      line-height: 1.25;
+    }
+  }
+
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    background: inherit;
+    padding: $gutter-h $gutter-w;
+    z-index: 1;
+    .title {
+      line-height: 1;
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      padding: 0;
+    }
+    .btn-icon {
+      i {
+        line-height: 26px;
+        font-size: 18px;
+      }
+    }
+
+  }
+  .gutter {
+    --gutter-border: var(--query-editor-gutter-border);
+  }
+  .bottom-panel {
+    background: var(--bottom-panel-bg);
+    > .layout-center {
+      overflow: hidden;
+    }
+    .toolbar {
+      padding-top: $gutter-h * 0.5;
+      padding-bottom: $gutter-h * 0.5;
+      padding-left: ($gutter-h * 1.5);
+      background: var(--table-cell-bg-hover);
+    }
+    .result-table {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      overflow: hidden;
+      .tabulator-cell {
+        cursor: default;
+      }
+    }
+    .not-run-yet {
+      padding: 0.5rem 0.75rem;
+    }
+    .message {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1 1 100%;
+      padding: 0 $gutter-w;
+      background: transparent;
+    }
+    .alert {
+      // background: transparent;
+      max-width: 70%;
+      margin: 0 auto;
+    }
+
+  }
+
+  .BksSqlTextEditor {
+    min-height: 0;
+    isolation: isolate;
+  }
+
+  .statusbar {
+    .statusbar-right-actions {
+      flex-basis: auto;
+    }
+    .btn.btn-flat .material-icons {
+      font-size: 16px;
+    }
+  }
+
+  .dry-run-btn {
+    gap: 0.35rem;
+
+    input[type=checkbox] {
+      margin: 0;
+    }
+  }
+}
+
+// Shortcut
+// -------------------
+.shortcuts {
+  display: table;
+}
+.shortcut-item {
+  display: table-row;
+  color: var(--text-muted);
+  font-size: 95%;
+  > div {
+    display: table-cell;
+    padding: $gutter-h;
+    padding-right: ($gutter-h - .2);
+    padding-block: 0.6rem;
+  }
+  .new {
+    margin-right: $gutter-h;
+  }
+}
+.shortcut {
+  text-align: left;
+  & > span {
+    @extend .kbd;
+    margin: 0 ($gutter-h * 0.35);
+  }
+}
+
+.progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 100%;
+  .cancel-query {
+    margin-top: $gutter-h;
+  }
+}

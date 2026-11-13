@@ -1,0 +1,33 @@
+name: UI Kit - Build & Publish
+
+permissions:
+  contents: read
+
+on:
+  push:
+    tags:
+      - "ui-kit/v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+
+      - name: Install Node.js, NPM, and PNPM
+        uses: jdx/mise-action@v5
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile --fetch-timeout 100000
+
+      - name: Run tests
+        run: pnpm -F @beekeeperstudio/ui-kit run test
+
+      - name: Build
+        run: pnpm -F @beekeeperstudio/ui-kit run build
+
+      - name: Publish to npm
+        run: pnpm -F @beekeeperstudio/ui-kit publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

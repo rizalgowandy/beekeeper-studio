@@ -1,0 +1,330 @@
+$button-height:     $statusbar-height * 0.72;
+
+.global-status-bar {
+  display: flex;
+  align-items: center;
+  min-height: $statusbar-height;
+  height: $statusbar-height;
+  line-height: $statusbar-height;
+  font-size: 0.8rem;
+  background: var(--statusbar-bg);
+  color: var(--statusbar-fg);
+  // overflow: hidden;
+
+  > .vue-portal-target {
+    flex-grow: 1;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .statusbar {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 $gutter-h;
+    background: var(--statusbar-bg);
+    color: var(--statusbar-fg);
+    --btn-fg: var(--statusbar-fg);
+    --btn-fg-hover: var(--statusbar-fg);
+    --btn-flat-fg: var(--statusbar-fg);
+    --btn-flat-fg-hover: var(--statusbar-fg);
+    --input-fg: var(--statusbar-fg);
+    --input-border: 1px solid rgb(from var(--statusbar-fg) r g b / 0.2);
+  }
+
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+      /* display: none; <- Crashes Chrome on hover */
+      -webkit-appearance: none;
+      margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+  }
+
+
+  .statusbar > .col {
+    display: flex;
+    align-items: center;
+  }
+  .badge {
+    border-radius: 1.8rem;
+  }
+  .btn {
+    &.error, &.error:hover {
+      pointer-events: all !important;
+    }
+  }
+  a {
+    color: var(--statusbar-fg);
+  }
+  span.row {
+    .material-icons {
+      font-size: 16px;
+      margin-right: $gutter-h * 0.5;
+    }
+  }
+  &.tabulator-footer {
+    .tabulator-page {
+      color: var(--statusbar-fg);
+      &.active {
+        background: rgb(from var(--statusbar-fg) r g b / 0.15);
+      }
+    }
+  }
+
+  // No Data
+  // -----------------------
+  .empty {
+    padding: 0 $gutter-h;
+  }
+
+
+  .connection-button-wrapper {
+    flex-shrink: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .connection-button {
+    height: 100%;
+    > .btn{
+      padding: 0;
+      margin: 0;
+      box-shadow: none!important;
+      color: inherit;
+      min-width: min-content;
+      border-radius: $btn-border-radius-small;
+    }
+  }
+
+  .statusbar-actions,
+  .statusbar-info {
+    display: flex;
+    align-items: center;
+  }
+
+  // Buttons
+  // ----------------------
+  .btn {
+    padding: 0 0.6rem;
+    min-width: min-content;
+    height: $button-height;
+    line-height: $button-height;
+    margin: 0 0.15rem;
+    // margin-top: -1px;
+    .material-icons {
+      font-size: 16px;
+    }
+    &.actions-btn {
+      padding: 0 0.35rem;
+      // The button's own gear and arrow, not the icons in its menu
+      > .material-icons {
+        width: 13px;
+      }
+    }
+    &.btn-badge {
+      .badge {
+        margin: 0;
+        margin-right: $gutter-h * 0.25;
+        background: transparent;
+        line-height: 1;
+        padding-left: 0;
+        color: var(--statusbar-fg-inverse);
+      }
+    }
+
+    &.btn-flex {
+      display: flex;
+      align-items: center;
+      justify-content: space-btween;
+    }
+  }
+
+  .download-results,
+  .pending-changes {
+    background: rgb(from var(--statusbar-fg) r g b / 0.82);
+    box-shadow: inset 0 0 0 1px rgb(from var(--statusbar-fg-inverse) r g b / 0.025);
+    border-radius: $btn-border-radius;
+    margin: 0 0.15rem;
+    overflow: hidden;
+    > .btn {
+      background: transparent;
+      color: var(--statusbar-fg-inverse);
+      // color: $theme-bg;
+      border-radius: 0!important;
+      margin-top: 0;
+      margin: 0;
+      &:hover, &:hover[expanded] {
+        background: rgb(from var(--statusbar-fg) r g b / 0.05);
+      }
+      &[menu] {
+        border-left: 1px solid rgb(from var(--statusbar-fg-inverse) r g b / 0.35);
+        &:hover {
+          border-left: 1px solid rgb(from var(--statusbar-fg-inverse) r g b / 0.35);
+        }
+      }
+      .material-icons {
+        color: var(--statusbar-fg-inverse);
+      }
+    }
+  }
+  .download-results {
+    margin-right: $gutter-h * 0.25;
+    .material-icons {
+      margin-right: $gutter-h * 0.25;
+    }
+  }
+  .pending-changes {
+    > .btn {
+      .material-icons {
+        margin-right: $gutter-h * 0.5;
+      }
+    }
+  }
+
+  // Pending Changes
+  .pending-changes {
+    margin-left: 0.1rem;
+    > .btn {
+      margin: 0;
+    }
+    .badge {
+      background: transparent;
+      padding: 0;
+      font-size: 14px;
+      min-width: 10px;
+      line-height: 16px;
+      margin-left: 0;
+      text-align: left;
+      color: var(--statusbar-fg-inverse);
+    }
+    .material-icons {
+      font-size: 14px;
+      overflow: visible;
+      line-height: 1.1;
+    }
+    .btn-primary .badge {
+      color: inherit;
+    }
+  }
+
+  // Results Select
+  // -------------------------
+  .result-selector {
+    margin-left: -$gutter-h * 0.5;
+  }
+  .select-wrap {
+    box-shadow: inset 0 0 0 1px rgb(from var(--statusbar-fg) r g b / 0.025);
+    background: rgb(from var(--statusbar-fg) r g b / 0.1);
+    color: var(--statusbar-fg);
+    height: $button-height;
+    border-radius: $btn-border-radius;
+    transition: background 0.2s ease-in-out;
+    &:hover {
+      background: rgb(from var(--statusbar-fg) r g b / 0.15);
+    }
+    select {
+      color: var(--statusbar-fg);
+      height: $button-height;
+      line-height: $button-height;
+      -webkit-appearance: none!important;
+      appearance: none!important;
+      font-weight: 600;
+      font-size: 12px;
+      background: var(--select-arrow) no-repeat scroll 98% 60% transparent !important;
+      option {
+        color: var(--text);
+      }
+    }
+  }
+
+  // Query Status
+  // ----------------------------
+  .statusbar-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 $gutter-h;
+    font-weight: 500;
+    line-height: $statusbar-height;
+    overflow: hidden;
+    text-overflow:ellipsis;
+    i {
+      font-size: 18px;
+      line-height: $statusbar-height;
+      margin-right: 0.35rem;
+      width: 16px;
+    }
+    &.error {
+      color: var(--statusbar-fg);
+      font-size: 0.75rem;
+      padding-right: 2rem;
+      // room for the icon once the message is truncated
+      min-width: calc(#{$gutter-h} + 16px + 0.35rem + 2rem);
+      i {
+        color: var(--statusbar-fg);
+        flex-shrink: 0;
+      }
+      > span {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        max-width: 30rem;
+      }
+    }
+  }
+
+  // Table tab: hidden column indicator
+  .statusbar-item.hidden-column-count {
+    margin-right: 0.1rem;
+    line-height: 1;
+    & > a {
+      color: inherit;
+      display: inline-flex;
+    }
+    i {
+      margin-right: 0;
+      font-size: 16px;
+      line-height: 1;
+    }
+  }
+
+  .row-counts {
+    .truncated-rows, .records {
+      margin-left: $gutter-h * 0.5;
+    }
+  }
+  .statusbar-info {
+    min-width: 33.3333%;
+  }
+
+  // Connection Status
+  // ---------------------------
+  .connection-name {
+    font-size: 0.85rem;
+  }
+  .connection-button {
+    background-color: var(--gray-a3);
+    .material-icons {
+      font-size: 20px;
+      text-align: center;
+      margin: 0;
+      width: calc(var(--connection-button-icon-width) + 0.2rem);
+    }
+    > .btn {
+      width: 100%;
+      height: 100%;
+      text-align: left;
+      border-radius: 0;
+      --trigger-effect: none;
+    }
+    x-menu {
+      width: 220px;
+    }
+    .badge {
+      font-size: 100%;
+      min-width: fit-content;
+      background: transparent;
+      color: inherit;
+    }
+  }
+
+
+}

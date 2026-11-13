@@ -1,0 +1,132 @@
+import { AppEvent } from "../../common/AppEvent"
+import rawLog from '@bksLogger'
+import { SmartLocalStorage } from '@/common/LocalStorage'
+import Noty from "noty";
+import { dispatchWindowClose } from '@/lib/windowListeners'
+import { DevLicenseState } from '@/lib/license'
+import { resetTrialFlow } from '@/lib/trial'
+import { clearLifetimeVersionNotice } from '@/lib/lifetimeVersion'
+
+const log = rawLog.scope("AppEventHandler")
+
+export default class {
+  vueApp
+
+  constructor(vueApp) {
+    this.vueApp = vueApp
+  }
+
+  registerCallbacks() {
+    window.main.on(AppEvent.settingsChanged, this.settingsChanged.bind(this))
+    window.main.on(AppEvent.reconnect, this.reconnect.bind(this))
+    window.main.on(AppEvent.disconnect, this.disconnect.bind(this))
+    window.main.on(AppEvent.beekeeperAdded, this.addBeekeeper.bind(this))
+    window.main.on(AppEvent.switchLicenseState, this.switchLicenseState.bind(this))
+    window.main.on(AppEvent.simulatePlatform, this.simulatePlatform.bind(this))
+    window.main.on(AppEvent.windowClose, this.windowClose.bind(this))
+    this.forward(AppEvent.disconnect)
+    this.forward(AppEvent.closeTab)
+    this.forward(AppEvent.newTab)
+    this.forward(AppEvent.newCustomTab)
+    this.forward(AppEvent.togglePrimarySidebar)
+    this.forward(AppEvent.toggleSecondarySidebar)
+    this.forward(AppEvent.quickSearch)
+    this.forward(AppEvent.enterLicense)
+    this.forward(AppEvent.backupDatabase);
+    this.forward(AppEvent.restoreDatabase);
+    this.forward(AppEvent.exportTables);
+    this.forward(AppEvent.upgradeModal)
+    this.forward(AppEvent.promptSqlFilesImport)
+    this.forward(AppEvent.promptConnectionFilesImport)
+    this.forward(AppEvent.updatePin)
+    this.forward(AppEvent.settingsChanged)
+    this.forward(AppEvent.openPluginManager)
+    this.forward(AppEvent.openKeyboardShortcuts)
+    this.forward(AppEvent.openThemePlayground)
+    this.forward(AppEvent.openAppearanceModal)
+    this.forward(AppEvent.pluginMenuClicked)
+    this.forward(AppEvent.pasteAsNewRows)
+    this.vueApp.$util.addListener('conn/connection-lost', this.connectionLost.bind(this))
+    this.vueApp.$util.addListener('themeFileChanged', (...args) => this.vueApp.$emit(AppEvent.themeFileChanged, ...args))
+  }
+
+  forward(event) {
+    const emit = (_e, ...args) => {
+      log.debug("Received from electron, forwarding to app", event)
+      this.vueApp.$emit(event, ...args)
+    }
+    window.main.on(event, emit.bind(this))
+  }
+
+  async windowClose() {
+    window.main.respondWindowClose(await dispatchWindowClose())
+  }
+
+  closeTab() {
+    this.vueApp.$emit(AppEvent.closeTab)
+  }
+
+  async addBeekeeper() {
+    const existing = await this.vueApp.$util.send('appdb/saved/findOneBy', { options: { defaultDatabase: platformInfo.appDbPath }});
+    if (!existing) {
+      const nu = {};
+      nu.connectionType = 'sqlite'
+      nu.defaultDatabase = platformInfo.appDbPath
+      nu.name = "Beekeeper's Database"
+      nu.labelColor = 'orange'
+      await this.vueApp.$util.send('appdb/saved/save', { obj: nu });
+    }
+    this.vueApp.$noty.success("Beekeeper's Database has been added to your Saved Connections")
+    this.vueApp.$store.dispatch('data/connections/load')
+  }
+
+  reconnect() {
+    this.vueApp.$store.dispatch('reconnect')
+  }
+
+  disconnect() {
+    this.vueApp.$store.dispatch('disconnect')
+  }
+
+  connectionLost() {
+    this.vueApp.$emit(AppEvent.connectionLost)
+    this.vueApp.$noty.error('Connection lost. Would you like to reconnect?', {
+      timeout: false,
+      closeWith: ['button'],
+      killer: 'connection-lost',
+      queue: 'connection-lost',
+      buttons: [
+        Noty.button('Close', 'btn btn-flat', (noty) => noty.close()),
+        Noty.button('Reconnect', 'btn btn-primary', (noty) => {
+          noty.close()
+          this.vueApp.$store.dispatch('reconnect')
+        }),
+      ],
+    })
+  }
+
+  settingsChanged() {
+    this.vueApp.$store.dispatch("settings/initializeSettings")
+  }
+
+  simulatePlatform(_event, platform) {
+    if (platform === 'none') {
+      localStorage.removeItem('dev.simulatePlatform')
+    } else {
+      localStorage.setItem('dev.simulatePlatform', platform)
+    }
+    window.location.reload(true)
+  }
+
+  async switchLicenseState(_event, state) {
+    await this.vueApp.$util.send('dev/switchLicenseState', { state })
+    // Forget the answers to the trial-ended and lifetime-version dialogs so
+    // they run again for the chosen state. Feature usage is kept unless
+    // starting over from a first install, so "trial expired" previews the
+    // dialog with real usage in it.
+    resetTrialFlow({ keepUsage: state !== DevLicenseState.firstInstall })
+    clearLifetimeVersionNotice()
+    SmartLocalStorage.setBool('expiredLicenseEventsEmitted', false)
+    window.location.reload(true)
+  }
+}

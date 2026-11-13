@@ -1,0 +1,216 @@
+<template>
+  <portal to="modals">
+    <modal
+      :name="name"
+      :click-to-close="closable"
+      @before-open="$emit('before-open', $event)"
+      @before-close="handleBeforeClose"
+      @opened="handleOpened"
+      @closed="$emit('closed')"
+      class="base-modal-root"
+      :style="{ '--base-modal-min-width': minWidth, '--base-modal-max-width': maxWidth }"
+    >
+      <x-progressbar v-if="loading" />
+      <form
+        v-kbd-trap="true"
+        class="base-modal"
+        :style="{ height }"
+        ref="form"
+        @submit.prevent="$emit('submit', $event, close)"
+      >
+        <div class="base-modal-header">
+          <div class="base-modal-title">
+            <slot name="title" :close="close" />
+          </div>
+          <a
+            v-if="closable"
+            href="#"
+            class="base-modal-close"
+            @click.prevent="close"
+            ref="closeBtn"
+          >
+            <i class="material-icons">clear</i>
+          </a>
+        </div>
+        <div class="base-modal-body">
+          <slot :close="close" :submit="() => $refs.form.requestSubmit()" />
+        </div>
+        <div class="base-modal-footer" v-if="$scopedSlots.footer">
+          <slot name="footer" :close="close" />
+        </div>
+      </form>
+    </modal>
+  </portal>
+</template>
+
+<script lang="ts">
+import Vue from "vue";
+
+export default Vue.extend({
+  props: {
+    name: {
+      type: String,
+      required: true,
+    },
+    /** Query to find the first focusable element */
+    firstFocusable: {
+      type: String,
+      default: [
+        "a[href]:not(.base-modal-close)",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(","),
+    },
+    /** Show loading indicator */
+    loading: Boolean,
+    height: String,
+    minWidth: {
+      type: String,
+      default: "36rem"
+    },
+    maxWidth: {
+      type: String,
+      default: "550px"
+    },
+    /**
+     * When false there is no close button, and Escape, overlay clicks and
+     * stray `$modal.hide` calls are ignored: only `close()` (also exposed as
+     * the scoped slot prop) dismisses the modal. For dialogs that need an
+     * explicit decision, like the trial-ended prompt.
+     */
+    closable: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  data() {
+    return {
+      // Raised by close() for the duration of the hide call, so
+      // handleBeforeClose can tell an intentional close from an escape.
+      allowClose: false,
+    };
+  },
+  methods: {
+    close() {
+      this.allowClose = true;
+      try {
+        this.$modal.hide(this.name);
+      } finally {
+        this.allowClose = false;
+      }
+    },
+    handleBeforeClose(event: { stop: () => void }) {
+      if (!this.closable && !this.allowClose) {
+        event.stop();
+        return;
+      }
+      this.$emit("before-close", event);
+    },
+    handleOpened() {
+      const target =
+        this.$refs.form?.querySelector(this.firstFocusable) ??
+        this.$refs.closeBtn;
+      target?.focus();
+      this.$emit("opened");
+    },
+  },
+});
+</script>
+
+<style lang="scss" scoped>
+.base-modal-root ::v-deep .v--modal {
+  min-width: var(--base-modal-min-width);
+  max-width: var(--base-modal-max-width);
+  min-height: 6rem;
+  width: auto !important;
+}
+
+.base-modal {
+  --base-modal-footer-gap: 0.5rem;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.base-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-inline: 1.2rem;
+  padding-block: 0.8rem;
+}
+
+.base-modal-title {
+  font-size: 1.1rem;
+  line-height: 1.8rem;
+  font-weight: 500;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  ::v-deep i.material-icons {
+    font-size: 1.1rem;
+  }
+
+  &::v-deep h2 {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+  }
+}
+
+.base-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 1.8rem;
+  min-width: 1.8rem;
+  height: 1.8rem;
+  line-height: 1.8rem;
+  border-radius: 1.8rem;
+  padding: 0;
+  margin: 0;
+  margin-right: -0.15em;
+  box-shadow: none;
+  user-select: none;
+  transition: background 0.15s ease-in-out;
+}
+
+.base-modal-close:hover,
+.base-modal-close:focus {
+  background: var(--btn-bg-hover);
+}
+
+.base-modal-close .material-icons,
+.base-modal-close .material-icons-outlined {
+  font-size: 1.25rem;
+  color: var(--btn-fg);
+}
+
+.base-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  width: 100%;
+  padding: 0 1.2rem 0.8rem;
+}
+
+.base-modal-footer {
+  display: flex;
+  gap: var(--base-modal-footer-gap);
+  width: 100%;
+  justify-content: flex-end;
+  padding-inline: 1.2rem;
+  padding-bottom: 0.8rem;
+}
+
+x-progressbar {
+  // Avoid shifting the other elements down
+  position: absolute;
+}
+</style>

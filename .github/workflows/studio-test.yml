@@ -1,0 +1,196 @@
+name: Studio Tests
+
+permissions:
+  contents: read
+  actions: write
+
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prep:
+    runs-on: ubuntu-24.04
+    outputs:
+      test-chunks: ${{ steps.set-test-chunks.outputs.test-chunks }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Node.js, NPM, PNPM, and jq
+        uses: jdx/mise-action@v5
+
+      - id: set-test-chunks
+        name: Set Chunks
+        run: echo "test-chunks=$(./bin/get-db-files-as-json.sh)" >> $GITHUB_OUTPUT
+
+
+      # ImageOS identifies the runner image (e.g. ubuntu22, ubuntu24), so caches
+      # never cross runner image versions: node_modules holds native modules
+      # compiled for one exact image.
+      - name: Compute runner image cache id
+        shell: bash
+        run: echo "RUNNER_IMAGE_ID=${ImageOS:-unknown}" >> "$GITHUB_ENV"
+
+      - name: Cache node_modules
+        id: cache-nm
+        uses: actions/cache@v5
+        with:
+          path: |
+            node_modules
+            apps/studio/node_modules
+            apps/ui-kit/node_modules
+          key: node-modules-${{ env.RUNNER_IMAGE_ID }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        if: steps.cache-nm.outputs.cache-hit != 'true'
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          command: pnpm install --frozen-lockfile --fetch-timeout 100000
+        env:
+          HUSKY: "0"
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    needs: [prep]
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+
+      - name: Install Node.js, NPM, and PNPM
+        uses: jdx/mise-action@v5
+
+      - name: Compute runner image cache id
+        shell: bash
+        run: echo "RUNNER_IMAGE_ID=${ImageOS:-unknown}" >> "$GITHUB_ENV"
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            node_modules
+            apps/studio/node_modules
+            apps/ui-kit/node_modules
+          key: node-modules-${{ env.RUNNER_IMAGE_ID }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-${{ hashFiles('pnpm-lock.yaml') }}
+          fail-on-cache-miss: true
+
+      - name: Lint
+        run: pnpm -F beekeeper-studio run lint
+
+      - name: Check for bad files
+        run: bin/check-for-only-tests.sh
+
+      - name: Check for license-breaking includes
+        run: bin/check-for-src-commercial.sh
+
+      - name: Check for bad log imports
+        run: bin/check-for-electron-log-imports.sh
+
+      - name: Check for direct console.log calls
+        run: bin/check-for-console-logs.sh
+
+      - name: Check for missing lodash imports
+        run: bin/check-lodash.sh
+
+      - name: Check shell scripts (shellcheck)
+        run: bin/check-shell-scripts.sh
+
+      - name: Build UI Kit
+        run: pnpm lib:build
+
+      # Everything runs under vitest (see apps/studio/tests/VITEST_MIGRATION.md)
+      - name: Unit Tests
+        run: pnpm -F beekeeper-studio run test:unit --silent
+
+      - name: Non-DB Integration Tests
+        run: pnpm -F beekeeper-studio run vitest:ci --silent
+
+      - name: Unit Tests (UI Kit)
+        run: pnpm -F @beekeeperstudio/ui-kit run test --silent
+
+
+  integration:
+    name: ${{ matrix.chunk[0] }}
+    runs-on: ubuntu-24.04
+    needs:
+      - prep
+    strategy:
+      fail-fast: false
+      matrix:
+        chunk: ${{ fromJson(needs.prep.outputs['test-chunks']) }}
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+
+      - name: Install Node.js, NPM, and PNPM
+        uses: jdx/mise-action@v5
+
+      - name: Compute runner image cache id
+        shell: bash
+        run: echo "RUNNER_IMAGE_ID=${ImageOS:-unknown}" >> "$GITHUB_ENV"
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            node_modules
+            apps/studio/node_modules
+            apps/ui-kit/node_modules
+          key: node-modules-${{ env.RUNNER_IMAGE_ID }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-${{ hashFiles('pnpm-lock.yaml') }}
+          fail-on-cache-miss: true
+
+      - name: Install libaio (for oracle)
+        if: startsWith(matrix.chunk[0], 'oracle')
+        run: sudo apt install libaio-dev
+
+      - name: Symlink libaio v1 (for oracle)
+        if: startsWith(matrix.chunk[0], 'oracle')
+        run: sudo ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1
+
+      - name: Install PostgreSQL 15 (for postgres-backup)
+        if: matrix.chunk[0] == 'postgres-backup.spec.ts'
+        run: sudo bash bin/get-postgres-15.sh
+
+      - name: Test
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 20
+          max_attempts: 2
+          on_retry_command: "docker ps -aq | xargs docker stop | xargs docker rm"
+          command: pnpm -F beekeeper-studio run test:integration ${{ matrix.chunk[1] }}
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+  # codemirror:
+  #   name: CodeMirror tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Check out Git repository
+  #     uses: actions/checkout@v2
+
+  #   - name: Install Node.js, NPM and Yarn
+  #     uses: actions/setup-node@v6
+  #     with:
+  #       node-version-file: '.nvmrc'
+  #       cache: yarn
+
+  #   - name: Install dependencies
+  #     run: yarn install --frozen-lockfile
+  #   - name: Test
+  #     uses: nick-fields/retry@v4
+  #     with:
+  #       timeout_minutes: 20
+  #       max_attempts: 2
+  #       on_retry_command: "docker ps -aq | xargs docker stop | xargs docker rm"
+  #       command: yarn workspace beekeeper-studio run test:codemirror

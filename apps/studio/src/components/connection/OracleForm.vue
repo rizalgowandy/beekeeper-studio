@@ -1,0 +1,179 @@
+<template>
+  <div class="with-connection-type oracledb-form">
+    <template v-if="$config.oracleSupported">
+      <div class="advanced-connection-settings">
+        <div class="flex flex-middle">
+          <span class="btn-icon" @click.prevent="oracleExpanded = !oracleExpanded">
+            <i v-if="!oracleExpanded" class="material-icons">keyboard_arrow_right</i>
+            <i v-if="oracleExpanded" class="material-icons">keyboard_arrow_down</i>
+          </span>
+          <h4 class="advanced-heading">
+            Global Oracle Configuration
+          </h4>
+        </div>
+        <div v-if="oracleExpanded" class="advanced-body">
+          <settings-input
+            v-if="$config.oracleInstantClientSupported"
+            setting-key="oracleInstantClient" input-type="directory" @changed="restart"
+            title="Instant Client Location" :help="help"
+          />
+          <div v-else class="form-group">
+            <label>Instant Client Location</label>
+            <small class="help text-muted">
+              Oracle Instant Client is not available for Windows on ARM, so connections use thin mode.
+              Features that need thick mode, like Native Network Encryption, are unavailable.
+            </small>
+          </div>
+          <settings-input
+            setting-key="oracleConfigLocation" input-type="directory" @changed="configDirChanged" title="TNS_ADMIN override"
+            help="The directory containing tnsnames.ora, sqlnet.ora, and wallets. Changing this after connecting requires a restart."
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="connectionType">Connection Method</label>
+        <select v-model="connectionMethod" :disabled="disabled">
+          <option value="manual">
+            Manual Host and Port
+          </option>
+          <option value="connectionString">
+            Connection String or Alias
+          </option>
+        </select>
+      </div>
+
+      <div class="oracle-manual" v-if="connectionMethod === 'manual'">
+        <common-server-inputs
+          :support-complex-s-s-l="false"
+          ssl-help="Requires your wallet to be already set up in TNS_ADMIN" :config="config"
+          :disabled="disabled"
+        />
+        <div class="form-group">
+          <label for="serviceName">Service Name</label>
+          <input type="text" class="form-control" v-model="config.serviceName" :disabled="disabled">
+        </div>
+        <div class="form-group">
+          <label for="oracleRole">Role</label>
+          <select id="oracleRole" v-model="privilege" :disabled="disabled">
+            <option v-for="r in roles" :key="r.label" :value="r.value">
+              {{ r.label }}
+            </option>
+          </select>
+          <small class="help text-muted">SYSDBA or SYSOPER is required to connect as SYS</small>
+        </div>
+        <common-advanced :config="config" :disabled="disabled" />
+      </div>
+      <div v-if="connectionMethod === 'connectionString'">
+        <div class="form-group gutter">
+          <label for="connectionString">Connection String or TNS alias</label>
+          <textarea
+            v-model="config.options.connectionString" name="connectionString" class="form-control" id=""
+            cols="30" rows="5"
+            :disabled="disabled"
+          />
+        </div>
+        <div class="row gutter">
+          <div class="col s6 form-group">
+            <label for="user">User (optional)</label>
+            <input type="text" name="user" v-model="config.username" class="form-control" :disabled="disabled">
+          </div>
+          <div class="col s6 form-group">
+            <label for="password">Password (optional)</label>
+            <input type="password" v-model="config.password" class="form-control" :disabled="disabled">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="oracleRole">Role</label>
+          <select id="oracleRole" v-model="privilege" :disabled="disabled">
+            <option v-for="r in roles" :key="r.label" :value="r.value">
+              {{ r.label }}
+            </option>
+          </select>
+          <small class="help text-muted">SYSDBA or SYSOPER is required to connect as SYS</small>
+        </div>
+        <br>
+      </div>
+    </template>
+    <template v-else>
+      <div class="alert alert-warning">
+        <i class="material-icons-outlined">warning</i>
+        <div>Oracle does not currently support MacOS devices running Apple silicon.</div>
+      </div>
+      <div>
+        <p>Unfortunately, Oracle does not publish a version of the 'Oracle Instant Client' for your device type.</p>
+        <p class="">
+          Read more:
+          <a href="https://www.oracle.com/database/technologies/instant-client.html" class="">Oracle Instant Client
+            docs</a>
+        </p>
+      </div>
+    </template>
+  </div>
+</template>
+<script lang="ts">
+import Vue from 'vue'
+import Noty from 'noty'
+import CommonServerInputs from './CommonServerInputs.vue'
+import CommonAdvanced from './CommonAdvanced.vue'
+import SettingsInput from '../common/SettingsInput.vue'
+import { mapState } from 'vuex'
+
+export default Vue.extend({
+  components: { CommonServerInputs, CommonAdvanced, SettingsInput },
+  props: {
+    config: Object,
+    disabled: {
+      type: Boolean,
+      default: false
+    }
+  },
+  data: () => ({
+    help: "Optional, but required for advanced functionality like Native Network Encryption.",
+    oracleExpanded: true,
+    roles: [
+      { label: 'Default', value: null },
+      { label: 'SYSDBA', value: 'SYSDBA' },
+      { label: 'SYSOPER', value: 'SYSOPER' },
+    ],
+  }),
+  computed: {
+    ...mapState('settings', { 'settings': 'settings'}),
+    connectionMethod: {
+      set(value: string) {
+        this.config.options = {...this.config.options, connectionMethod: value}
+      },
+      get() {
+        return this.config.options.connectionMethod
+      }
+    },
+    privilege: {
+      set(value: string | null) {
+        this.config.options = {...this.config.options, privilege: value}
+      },
+      get() {
+        return this.config.options.privilege ?? null
+      }
+    },
+    restartNotification() {
+      return new Noty({
+        text: "You must restart Beekeeper Studio for this change to take effect.",
+        layout: 'bottomRight',
+        timeout: false,
+        closeWith: ['click', 'button'],
+      })
+    }
+  },
+  methods: {
+    restart() {
+      if(this.$config.isLinux) {
+        this.restartNotification.show()
+      }
+    },
+    configDirChanged() {
+      this.restartNotification.show()
+    },
+  },
+
+})
+</script>

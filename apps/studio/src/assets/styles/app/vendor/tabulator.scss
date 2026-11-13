@@ -1,0 +1,949 @@
+$foreign-key-width:      20px;
+
+$row-height:             30px;
+$cell-padding:           $gutter-w;
+
+// Add/Delete/Clone row
+// -------------------------------
+
+.tabulator .tabulator-tableholder .tabulator-table {
+
+  background-color: transparent;
+  color: var(--table-fg);
+
+  .tabulator-row {
+    &.inserted,
+    &.inserted:hover {
+      position: relative;
+      background: var(--table-row-added-bg);
+      border: 0;
+      .tabulator-cell {
+        &.primary-key, &.read-only-field {
+          color: var(--table-cell-fg);
+          &:hover {
+            background: var(--table-cell-bg-hover);
+            cursor: pointer;
+          }
+        }
+      }
+    }
+    &.inserted {
+      .tabulator-editing {
+        box-shadow: inset 0 -1px var(--text)!important;
+      }
+      &.tabulator-moving {
+        position: absolute;
+        background: var(--table-row-added-bg) !important;
+      }
+    }
+    &.deleted,
+    &.deleted:hover {
+      background: var(--table-row-deleted-bg);
+    }
+    &.edit-error {
+      background: var(--table-row-error-bg)!important;
+    }
+    &.inserted,
+    &.deleted,
+    &.edit-error {
+      .tabulator-cell {
+        &:hover {
+          background: var(--table-cell-bg-hover);
+        }
+        &.foreign-key-button {
+          &:hover {
+            background: transparent!important;
+          }
+        }
+      }
+    }
+    &.deleted {
+      .tabulator-cell {
+        cursor: default!important;
+        &:hover {
+          background: transparent!important;
+          --table-cell-bg-hover: transparent;
+        }
+        .tabulator-bks-checkbox {
+          input {
+            cursor: default!important;
+          }
+        }
+      }
+    }
+    &.row-moved {
+      .tabulator-cell {
+        background: var(--primary-bg-a) !important;
+      }
+    }
+  }
+}
+
+.tabulator-row {
+  background: transparent;
+  width: min-content;
+  min-width: 100%;
+  &.tabulator-row-even {
+    background: var(--table-row-even-bg);
+  }
+  // Tabulator's stylesheet greys selectable rows on hover; keep the stripes instead.
+  &.tabulator-row-even.tabulator-selectable:hover {
+    background-color: var(--table-row-even-bg);
+  }
+  &.tabulator-row-odd.tabulator-selectable:hover {
+    background-color: var(--table-row-odd-bg);
+  }
+  &.tabulator-row-odd {
+    background: var(--table-row-odd-bg);
+
+    .tabulator-cell.tabulator-frozen.tabulator-range-row-header {
+      position: relative;
+      background: var(--table-bg);
+
+      &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+      }
+    }
+  }
+  &.tabulator-range-selected.tabulator-row-even:hover {
+    background-color: transparent;
+  }
+  &.tabulator-range-highlight .tabulator-cell.tabulator-frozen.tabulator-range-row-header {
+    background: var(--table-header-highlight-bg) !important;
+    color: var(--table-header-highlight-fg);
+  }
+  &.tabulator-range-selected .tabulator-cell.tabulator-frozen.tabulator-range-row-header {
+    background: var(--table-header-selected-bg) !important;
+    color: var(--table-header-selected-fg);
+    font-weight: bold;
+    border-radius: 0;
+  }
+  &.inserted {
+    .tabulator-cell {
+      &.tabulator-editing {
+        &.no-edit-highlight {
+          box-shadow: none!important;
+          input[type="checkbox"] {
+            &:active,
+            &:checked,
+            &:checked:active {
+              &:after {
+                color: var(--btn-primary-fg)!important;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .tabulator-cell {
+    border: 0;
+    padding: 0 $cell-padding;
+    min-height: $row-height;
+    height: $row-height;
+    line-height: $row-height;
+    cursor: default;
+    &:first-of-type {
+      padding-left: $cell-padding * 1.5;
+    }
+    &:last-of-type {
+      padding-right: $cell-padding * 1.5;
+    }
+    &.tabulator-frozen.tabulator-range-row-header {
+      padding: 0;
+      background: var(--table-bg);
+      border-right: 0 !important;
+      box-shadow: var(--table-row-header-shadow);
+      &:hover {
+        background: var(--table-cell-bg-hover);
+      }
+    }
+    i.fk-link {
+      display:none;
+    }
+
+    &.import-table-column {
+      .attributes {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-left: 0.2em;
+      }
+    }
+
+    pre {
+      margin: 0;
+      text-overflow: ellipsis;
+      font-family: inherit;
+      overflow: hidden;
+    }
+    input:not([type="checkbox"]) {
+      font-size: 0.85rem;
+      height: $row-height;
+      padding: 0 $gutter-w;
+    }
+    textarea {
+      border-color: transparent;
+      padding: 4px 6px!important;
+      line-height: $row-height - 8px; // row-height - vertical padding
+      z-index: 10;
+      box-shadow: inset 1px 0 var(--text);
+      height: auto!important;
+      &:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        background: var(--table-bg);
+      }
+    }
+    &.active-cell {
+      background: var(--selection-bg);
+      border-color: var(--border);
+      color: var(--selection-fg);
+    }
+
+    &.copied {
+      background: var(--table-cell-selected-bg) !important;
+    }
+
+    // Cell States
+    &.edited,
+    &.edit-error,
+    &.edit-success {
+      color: var(--table-cell-fg);
+    }
+    &.tabulator-editing {
+      box-shadow: inset 0 -1px var(--text)!important;
+      background: var(--table-cell-editing-bg);
+      padding-left: 0;
+      padding-right: 0;
+      min-height: $row-height;
+      line-height: $row-height;
+      overflow-y: visible;
+      height: auto!important;
+      &:focus {
+        box-shadow: inset 0 -1px var(--text)!important;
+      }
+      pre, input:not([type="checkbox"]), textarea {
+        padding: 0 $cell-padding!important;
+        min-height: $row-height;
+      }
+      pre, input:not([type="checkbox"]) {
+        line-height: $row-height!important;
+        &:focus {
+          outline-offset: 0!important;
+        }
+      }
+      input:not([type="checkbox"]) {
+        &.nullible-input {
+          padding-right: 18px!important;
+        }
+      }
+      .tabulator-bks-checkbox {
+        padding: 0!important;
+      }
+      input[type="checkbox"] {
+        box-shadow: inset 0 0 0 2px var(--text)!important;
+        &:active,
+        &:checked,
+        &:checked:active {
+          &:after {
+            color: var(--btn-primary-fg)!important;
+          }
+        }
+      }
+    }
+    &.tabulator-frozen {
+      border: 0 !important;
+      background-color: transparent;
+    }
+
+    .null-value {
+      color: var(--table-cell-readonly-fg);
+    }
+
+    .cell-link-wrapper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      :not(.fk-link) {
+        flex-grow: 1;
+      }
+    }
+  }
+
+  &.copied {
+    background: var(--table-cell-selected-bg) !important;
+    .tabulator-cell {
+
+      &:hover {
+        background: var(--table-cell-selected-bg) !important;
+      }
+    }
+  }
+
+  // Cell Edit States
+  .tabulator-cell {
+    &.edited {
+      background: var(--table-cell-edited-bg);
+      &:hover {
+        background: var(--table-cell-edited-bg);
+      }
+    }
+    &.edit-error {
+      background: var(--table-row-error-bg);
+      &:hover {
+        background: var(--table-row-error-bg);
+      }
+    }
+    &.edit-success {
+      background: var(--table-row-added-bg);
+      &:hover {
+        background: var(--table-row-added-bg);
+      }
+    }
+    &:hover {
+      background: var(--table-cell-bg-hover);
+      cursor: default;
+    }
+    // Needs the extra :not() to outweigh tabulator_midnight's black default.
+    &.tabulator-range-selected:not(.tabulator-range-only-cell-selected):not(.tabulator-range-row-header) {
+      background: var(--table-cell-selected-bg);
+    }
+
+    &.tabulator-range-selected:not(.tabulator-range-only-cell-selected) {
+      &.edited {
+        background: var(--table-cell-edited-bg);
+        &:hover {
+          background: var(--table-cell-edited-bg);
+        }
+      }
+      &.edit-error {
+        background: var(--table-row-error-bg);
+        &:hover {
+          background: var(--table-row-error-bg);
+        }
+      }
+      &.edit-success {
+        background: var(--table-row-added-bg);
+        &:hover {
+          background: var(--table-row-added-bg);
+        }
+      }
+    }
+  }
+
+  i.fk-link {
+    display:none;
+    position: absolute;
+    right: 5px;
+    background: var(--table-bg);
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  &:hover {
+    i.fk-link {
+      display: inline-block;
+      &:hover {
+        color: var(--text);
+      }
+    }
+  }
+}
+
+// Editable Hover
+.tabulator-row {
+  .tabulator-cell {
+    cursor: pointer;
+    color: var(--table-cell-fg);
+    &:hover, &.editable:hover {
+      background: var(--table-cell-bg-hover);
+    }
+    &.primary-key, &.read-only-field {
+      cursor: default;
+      color: var(--table-cell-readonly-fg);
+    }
+  }
+}
+
+.table-properties .view-only {
+  .tabulator-row {
+    .tabulator-cell:hover {
+      background: transparent;
+    }
+    .tabulator-cell,
+    .tabulator-cell input {
+      cursor: default!important;
+    }
+  }
+}
+
+
+.tabulator {
+  position: relative;
+  font-size: 12px;
+  border: 0;
+  width: 100%;
+  background: var(--table-bg);
+  .tabulator-headers {
+    .tabulator-col:first-of-type {
+      &.foreign-key, &.primary-key, &.read-only-field {
+        &:before{
+          left: $gutter-w * 0.8;
+        }
+      }
+    }
+  }
+  .tabulator-header {
+    background: transparent;
+    border: 0;
+    width: -webkit-fill-available;
+    color: var(--table-fg);
+    box-shadow: var(--table-header-shadow);
+    // tabulator_midnight draws a 2px #888 divider on frozen columns.
+    .tabulator-frozen.tabulator-frozen-left,
+    .tabulator-frozen.tabulator-frozen-right {
+      border-right: 0;
+      border-left: 0;
+    }
+    .tabulator-col {
+      background: transparent;
+      border: 0;
+      height: 32px!important;
+      font-size: 90%;
+      line-height: 1;
+      flex-direction: row;
+      &:not(.tabulator-range-row-header):not(.tabulator-range-selected) {
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+      }
+      &:hover:not(.tabulator-range-selected):not(.tabulator-range-row-header) {
+        background: var(--table-cell-bg-hover);
+      }
+      &.tabulator-range-highlight {
+        background: var(--table-header-highlight-bg);
+        color: var(--table-header-highlight-fg);
+      }
+      &.tabulator-range-selected {
+        background: var(--table-header-selected-bg);
+        color: var(--table-header-selected-fg);
+        .column-data-type {
+          color: inherit;
+        }
+      }
+      &.tabulator-range-row-header {
+        background-color: transparent;
+        border: none;
+      }
+      .tabulator-header-popup-button {
+        position: relative;
+        z-index: 1;
+        color: var(--text-muted);
+        &::before {
+          transition: opacity 0.15s;
+          content: "";
+          position: absolute;
+          width: 24px;
+          height: 24px;
+          transform: translate(-50%, -50%);
+          top: 50%;
+          left: 50%;
+          border-radius: 9999px;
+          background: var(--table-cell-bg-hover);
+          opacity: 0;
+          z-index: -1;
+        }
+        &:hover {
+          opacity: 1;
+          color: inherit;
+          &::before {
+            opacity: 1;
+          }
+        }
+      }
+      &.hide-header-menu-icon .tabulator-header-popup-button {
+        display: none;
+      }
+
+      // Column headers are the reorder drag handle (movableColumns is enabled),
+      // so show a grab cursor on hover and a grabbing cursor while a column is
+      // being dragged. See issue #3165.
+      &:hover {
+        cursor: grab;
+      }
+      &.tabulator-moving {
+        cursor: grabbing;
+      }
+
+      &:first-of-type .tabulator-col-content {
+        padding-left: $gutter-w * 1.5;
+      }
+      &:last-of-type .tabulator-col-content {
+        padding-right: $gutter-w * 0.5;
+      }
+      .column-data-type {
+        margin-left: 0.3rem;
+        font-size: 90%;
+        font-weight: 400;
+        color: var(--text-muted);
+      }
+      // Selectors mirror tabulator_midnight's so these win on source order.
+      &.tabulator-sortable[aria-sort="ascending"] .tabulator-col-content .tabulator-col-sorter,
+      &.tabulator-sortable[aria-sort="descending"] .tabulator-col-content .tabulator-col-sorter {
+        color: var(--table-fg);
+      }
+      &.tabulator-sortable[aria-sort="none"] .tabulator-col-content .tabulator-col-sorter {
+        color: var(--btn-icon-fg);
+      }
+      &.tabulator-sortable[aria-sort="ascending"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+        border-bottom-color: var(--table-fg);
+      }
+      &.tabulator-sortable[aria-sort="descending"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+        border-top-color: var(--table-fg);
+      }
+      &.tabulator-sortable[aria-sort="none"] .tabulator-col-content .tabulator-col-sorter .tabulator-arrow {
+        border-bottom-color: var(--btn-icon-fg);
+      }
+      // A selected column's sorter follows the header text; [aria-sort] keeps it above the state rules.
+      &.tabulator-range-selected.tabulator-sortable[aria-sort] .tabulator-col-content .tabulator-col-sorter {
+        color: inherit;
+        .tabulator-arrow {
+          border-top-color: currentColor;
+          border-bottom-color: currentColor;
+        }
+      }
+      &.foreign-key, &.primary-key, &.read-only-field {
+        .tabulator-col-content {
+          width: calc(100% - #{$foreign-key-width});
+        }
+        &:before{
+          $font-size: 13px;
+          font-family: 'Material Icons';
+          font-size: $font-size;
+          color: var(--primary-solid-bg);
+          padding-left: $foreign-key-width - $font-size;
+          display: inline-flex;
+          align-items: center;
+        }
+      }
+      &.foreign-key, &.primary-key {
+        &:before {
+          content: 'vpn_key'
+        }
+      }
+      &.read-only-field:before {
+        color: var(--gray-a8);
+        content: 'edit_off';
+      }
+      &.primary-key:before {
+        color: var(--info-text);
+      }
+      // Key icons follow the header text once the column is selected.
+      &.tabulator-range-selected:before {
+        color: inherit;
+      }
+      &.foreign-key-button {
+        display: none;
+      }
+      &.generated-column:before {
+        $font-size: 13px;
+        content: 'bolt';
+        font-family: 'Material Icons';
+        font-size: $font-size;
+        color: var(--gray-a8);
+        padding-left: $foreign-key-width - $font-size;
+        display: inline-flex;
+        align-items: center;
+      }
+      .tabulator-col-content {
+        padding: 0 4px 0 8px;
+        line-height: 32px;
+        width: 100%;
+        .tabulator-arrow {
+          top: 14px;
+          border-width: 4px!important;
+          border-bottom-color: var(--btn-icon-fg);
+        }
+      }
+    }
+    .tabulator-frozen {
+      position: relative;
+      &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: var(--table-bg);
+        z-index: -1;
+      }
+    }
+  }
+  .tabulator-tableHolder {
+    .tabulator-table {
+      background: transparent;
+      width: 100%;
+      color: var(--text-contrast);
+      user-select: text;
+    }
+    .tabulator-placeholder {
+      background: var(--gray-a2);
+      border-radius: 8px;
+      span {
+        font-size: 12px;
+        font-weight: normal;
+        color: var(--text-muted);
+      }
+    }
+  }
+
+  //holding div that contains loader and covers tabulator element to prevent interaction
+	.tabulator-loader {
+		.tabulator-loader-msg{
+			border-radius: 8px;
+			background: transparent;
+			font-weight: normal;
+			font-size: 1rem;
+
+			//loading message
+			&.tabulator-loading{
+				border: 0;
+				color: var(--text-contrast);
+        background: var(--table-bg);
+			}
+
+			//error message
+			&.tabulator-error{
+				border: 0;
+				color: var(--danger-text);
+			}
+		}
+  }
+
+}
+
+// * Applied when not dragging rows so frozen cells can be transparent
+// * Applied to draggable cells or cells that do not have a tabulator-field attribute
+// * Honestly, i forget what this is all about :D
+.tabulator:not(.tabulator-block-select) .tabulator-row .tabulator-frozen:not([tabulator-field]) {
+  position: relative;
+  &:not(.edited):not(:has(.tabulator-row-handle-box)) {
+    background: var(--table-bg);
+  }
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -10;
+  }
+  &:hover::before {
+    background: var(--table-cell-bg-hover);
+  }
+}
+
+.tabulator-edit-select-list {
+  background: var(--panel-bg);
+  color: var(--text);
+  box-shadow: var(--panel-shadow);
+  border-radius: 2px;
+  margin-top: $gutter-h;
+
+	.tabulator-edit-select-list-item{
+    color: var(--text-contrast);
+	}
+}
+
+.tabulator-footer {
+  display: none;
+  align-items: center;
+  justify-content: flex-end;
+  border: 0;
+  height: $statusbar-height;
+  padding: 0 $gutter-h;
+  background: var(--gray-a3);
+
+  .tabulator-paginator,
+  .tabulator-pages {
+    display: flex;
+    align-items: center;
+  }
+  .tabulator-pages {
+    margin: 0 ($gutter-h * 0.5);
+  }
+  .tabulator-page {
+    color: var(--text);
+    background: transparent;
+    color: var(--text);
+    border: 0;
+    box-shadow: none;
+    font-size: 0.8rem;
+    padding-bottom: 1px;
+    font-weight: bold;
+    border-radius: $statusbar-height;
+    cursor: pointer;
+    &:hover, &:focus {
+      background: transparent;
+      color: var(--text-contrast);
+    }
+    &.active {
+      color: var(--text-contrast);
+      background: var(--gray-a5);
+    }
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+      &:hover, &:focus {
+        background: transparent;
+      }
+    }
+
+    // Replacing text with Material Icons
+    &[data-page="first"],
+    &[data-page="prev"],
+    &[data-page="next"],
+    &[data-page="last"] {
+      visibility: hidden;
+      width: 24px;
+      padding: 0;
+      overflow: hidden;
+      &:before {
+        font-family: 'Material Icons';
+        visibility: visible;
+        font-size: 18px;
+        line-height: 24px;
+        font-weight: normal;
+        text-align: center;
+      }
+    }
+    &[data-page="first"]:before {
+      content: '\e5dc';
+    }
+    &[data-page="prev"]:before {
+      content: '\e408';
+    }
+    &[data-page="next"]:before {
+      content: '\e409';
+    }
+    &[data-page="last"]:before {
+      content: '\e5dd';
+    }
+  }
+}
+
+// New Pagination
+.tabulator-paginator > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  a {
+    display: inline-flex;
+    align-items: center;
+    .material-icons {
+      color: rgb(from var(--statusbar-fg) r g b / 0.68);
+      &:hover {
+        color: var(--statusbar-fg);
+      }
+    }
+  }
+  input[type="number"] {
+    font-weight: bold;
+    padding: 0 ($gutter-h * 1.5);
+    width: 60px;
+    text-align: center;
+  }
+}
+
+.tabulator-menu {
+  background: var(--menu-bg);
+  color: var(--menu-fg);
+  box-shadow: var(--panel-shadow);
+  border: var(--menu-border);
+  border-radius: var(--menu-border-radius);
+  min-width: 150px;
+  padding: 0.3rem 0;
+
+  .tabulator-menu-item {
+    // TODO this might not be used
+    &:hover, &.tabulator-spreadsheet-menu-item-focused {
+      background: var(--menu-bg-hover);
+    }
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+
+    .item-icon {
+      vertical-align: top;
+    }
+
+    // Section labels are disabled items so they can't be picked; keep them
+    // at full strength instead of the faded disabled look
+    &.tabulator-menu-item-disabled:has(.BksContextMenu-section-label) {
+      opacity: 1;
+      cursor: default;
+      background: transparent;
+    }
+  }
+
+  .tabulator-menu-separator {
+    border-top-color: var(--border-subtle);
+  }
+}
+
+
+// Tabulator Edit Select
+.tabulator-edit-select-list {
+  &:empty {
+    display: none;
+  }
+  .tabulator-edit-select-list-item {
+    &:hover {
+      background: var(--table-cell-bg-hover);
+    }
+    &.active, &.active:hover {
+      background: var(--info-solid-bg);
+      color: var(--info-contrast);
+    }
+  }
+}
+
+@import './tabulator/magics.scss';
+@import './tabulator/cell-decorations.scss';
+
+.tabulator .tabulator-tableholder .tabulator-range-overlay {
+  z-index: 11;
+  .tabulator-range, .tabulator-range-cell-active {
+    border-color: var(--table-range-border);
+    border-width: 1px;
+  }
+  .tabulator-range.tabulator-range-active::after {
+    background: var(--table-range-handle-bg);
+    z-index: 1;
+  }
+  .tabulator-range.copied {
+    border-style: dashed;
+  }
+}
+
+.tabulator-range-fill-handle {
+  background-color: var(--table-range-handle-bg);
+}
+
+.spreadsheet-table {
+  .tabulator-header {
+    outline: none;
+    .tabulator-col {
+      &.tabulator-range-selected {
+        .tabulator-col-content .tabulator-col-title-holder .tabulator-col-title {
+          color: inherit;
+          .tabulator-header-popup-button {
+            color: var(--table-header-selected-fg);
+          }
+          .tabulator-col-sorter.tabulator-col-sorter-element {
+            & .tabulator-arrow, &:hover .tabulator-arrow {
+              border-top-color: var(--table-header-selected-fg);
+              border-bottom-color: var(--table-header-selected-fg);
+            }
+          }
+          .tabulator-header-popup-button::before, .tabulator-col-sorter.tabulator-col-sorter-element:hover {
+            background: var(--table-header-selected-bg);
+          }
+        }
+      }
+
+      .tabulator-col-content .tabulator-col-title-holder .tabulator-col-title {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        overflow: visible;
+        padding: 0;
+        .title {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-right: 2px;
+          & > * {
+            display: inline;
+          }
+        }
+        &:not(:has(.tabulator-col-sorter)) {
+          flex-direction: row;
+        }
+        .tabulator-col-sorter.tabulator-col-sorter-element {
+          margin-left: auto;
+          width: 24px;
+          height: 24px;
+          min-width: 24px;
+          min-height: 24px;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          inset: 0;
+          border-radius: 9999px;
+          &:hover {
+            cursor: pointer;
+            background: var(--table-cell-bg-hover);
+            div.tabulator-arrow {
+              border-top-color: var(--btn-icon-fg-hover);
+              border-bottom-color: var(--btn-icon-fg-hover);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.tabulator-col-resize-guide {
+  background: var(--table-resize-guide-bg);
+  opacity: 1;
+  margin-left: 1px;
+}
+
+.tabulator-col-resize-handle:hover {
+  position: relative;
+  width: 6px;
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 3px;
+    height: 60%;
+    transform: translate(0, -50%);
+    background-color: rgb(from var(--table-resize-guide-bg) r g b / 0.6);
+    backdrop-filter: invert(100%);
+    border-radius: 999px;
+  }
+  &::before {
+    left: 4.5px;
+  }
+  &::after {
+    right: 4.5px;
+  }
+}
+
+.tabulator-tooltip {
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+}
+
+.beekeeper-studio-minimal-mode .tabulator-header {
+  font-weight: inherit;
+
+  .tabulator-col .tabulator-col-content .tabulator-col-title .title >
+  .column-data-type {
+    display: none;
+  }
+}
+
+.tabulator .tabulator-range-overlay .tabulator-range.tabulator-range-copy-highlight {
+  border-style: dashed;
+
+  &::after {
+    content: none;
+  }
+}

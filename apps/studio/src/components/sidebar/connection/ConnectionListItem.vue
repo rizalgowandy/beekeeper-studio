@@ -1,0 +1,399 @@
+<template>
+  <div
+    class="list-item"
+    :title="title"
+    @contextmenu.prevent="showContextMenu"
+  >
+    <a
+      href=""
+      class="list-item-btn"
+      :class="classList"
+      @click.prevent="handleClick($event)"
+      @dblclick.prevent="doubleClick(config)"
+    >
+      <input
+        v-if="!isRecentList"
+        draggable="false"
+        @mousedown.stop.prevent
+        @click.stop="$emit('select', config, $event)"
+        type="checkbox"
+        class="form-control delete-checkbox"
+        :class="{ shown: bulkSelectionActive }"
+        :checked="selected"
+      >
+      <span :class="`connection-label connection-label-color-${labelColor}`" />
+      <div class="connection-title flex-col expand">
+        <div class="title">
+          <editable-text
+            :initial-value="label"
+            :rename="rename"
+            @submit="submitRename"
+            @cancel="rename = false"
+          />
+        </div>
+        <div class="subtitle">
+          <span
+            class="bastion"
+            v-if="displayConfig.sshBastionHost && !privacyMode"
+          >
+            <span class="truncate">{{ displayConfig.sshBastionHost }}</span>&nbsp;>&nbsp;
+          </span>
+          <span
+            class="ssh"
+            v-if="displayConfig.sshHost && !privacyMode"
+          >
+            <span class="truncate">{{ displayConfig.sshHost }}</span>&nbsp;>&nbsp;
+          </span>
+          <span class="connection">
+            <span>
+              {{ privacyMode ? '******' : subtitleSimple }}
+            </span>
+          </span>
+        </div>
+      </div>
+      <span class="badge"><span>{{ displayConfig.connectionType }}</span></span>
+      <span
+        v-if="!isRecentList"
+        class="actions"
+        :class="{'pinned': pinned}"
+      >
+        <span
+          v-if="!pinned"
+          @mousedown.prevent.stop="pin"
+          :title="'Pin'"
+          class="btn-icon pin"
+        ><i class="bk-pin" /></span>
+        <span
+          v-if="pinned"
+          @mousedown.prevent.stop="unpin"
+          :title="'Unpin'"
+          class="btn-icon unpin"
+        ><i class="material-icons">clear</i></span>
+        <span
+          v-if="pinned"
+          @mousedown.prevent.stop="unpin"
+          class="btn-icon pinned"
+        >
+          <i
+            class="bk-pin"
+            :title="'Unpin'"
+          />
+          <i class="material-icons">clear</i>
+        </span>
+      </span>
+    </a>
+  </div>
+</template>
+<script>
+import { AppEvent } from '@/common/AppEvent';
+import { isUltimateType } from '@/common/interfaces/IConnection';
+import EditableText from '@/components/common/EditableText.vue';
+import TimeAgo from 'javascript-time-ago';
+import { mapGetters, mapState } from 'vuex';
+
+export default {
+  components: { EditableText },
+  // recent list is 'recent connections'
+  // if that is true, we need to find the companion saved connection
+  props: [
+    'config',
+    'isRecentList',
+    'selectedConfig',
+    'showDuplicate',
+    'pinned',
+    'privacyMode',
+    'bulkSelectionActive',
+    'selected',
+    'selectedCount',
+  ],
+  data: () => ({
+    timeAgo: new TimeAgo('en-US'),
+    split: null,
+    rename: false,
+  }),
+  computed: {
+    ...mapGetters(["isCloud", "workspace"]),
+    ...mapState('data/connections', {'connectionConfigs': 'items'}),
+    ...mapState('data/connectionFolders', {'folders': 'items'}),
+    classList() {
+      return {
+        // the connection screen edits a copy, so compare by key, not identity
+        'active': !!this.savedConnection && !!this.selectedConfig &&
+          this.savedConnection.id === this.selectedConfig.id &&
+          this.savedConnection.workspaceId === this.selectedConfig.workspaceId,
+        'selected': this.selected,
+        'bulk-selection-active': this.bulkSelectionActive,
+      }
+    },
+    labelColor() {
+      return this.savedConnection ? this.savedConnection.labelColor : 'default'
+    },
+    label() {
+      if (this.savedConnection && this.savedConnection.name && this.savedConnection.name.trim()) {
+        return this.savedConnection.name
+      } else if ((this.displayConfig.connectionType === 'sqlite' || this.displayConfig.connectionType === 'libsql') && this.displayConfig.defaultDatabase) {
+        return window.main.basename(this.displayConfig.defaultDatabase)
+      } else if (this.displayConfig.connectionType === 'sqlanywhere' && this.displayConfig.sqlAnywhereOptions?.mode === 'file' && this.displayConfig.sqlAnywhereOptions?.databaseFile) {
+        return window.main.basename(this.displayConfig.sqlAnywhereOptions.databaseFile);
+      }
+
+      return this.$bks.simpleConnectionString(this.displayConfig)
+    },
+    connectionType() {
+      if (this.displayConfig.connectionType === 'sqlite' || this.displayConfig.connectionType === 'libsql') {
+        return 'path'
+      }
+
+      return 'Url'
+    },
+    subtitleSimple() {
+      if (this.isRecentList) {
+        return this.timeAgo.format(this.config.updatedAt)
+      } else {
+        return this.$bks.simpleConnectionString(this.displayConfig)
+      }
+    },
+    title() {
+      return this.privacyMode ?
+        `Created by ${this.author}` :
+        `Created by ${this.author}, ${this.$bks.buildConnectionString(this.displayConfig)}`;
+    },
+    savedConnection() {
+
+      if (this.isRecentList) {
+        if (!this.config.connectionId || !this.config.workspaceId) return null
+
+        return this.connectionConfigs.find((c) =>
+          c.id === this.config.connectionId &&
+          c.workspaceId === this.config.workspaceId
+        )
+      } else {
+        return this.config
+      }
+    },
+    folder() {
+      return this.folders.find((f) => f.id === this.savedConnection.connectionFolderId);
+    },
+    isPersonal() {
+      return this.folder?.personal;
+    },
+    // For display purposes only: prefer the linked saved connection when this
+    // is a recent-list row, so edits to the saved connection (host, port, ssh,
+    // etc.) propagate to the recent connections list. Falls back to the
+    // used_connection snapshot when the saved connection is gone (orphan
+    // recent entry).
+    displayConfig() {
+      return this.savedConnection || this.config
+    },
+    author() {
+      if (!this.isCloud) {
+        return "You";
+      }
+      if (!this.displayConfig || !this.displayConfig.membership) {
+        return "Unknown";
+      }
+      if (
+        this.displayConfig.membership.userId === this.workspace.currentMembership.userId
+      ) {
+        return "You";
+      }
+      return this.displayConfig.membership.name;
+    },
+  },
+  methods: {
+    showContextMenu(event) {
+      // Stop here and propagate the event if right clicking an input element
+      if (event.target.tagName === 'INPUT') {
+        return;
+      }
+
+      event.stopPropagation();
+
+      let effectiveCount = this.selectedCount ?? 0
+      if (this.bulkSelectionActive && !this.selected) {
+        this.$emit('add-to-selection', this.config)
+        effectiveCount += 1
+      }
+      if (effectiveCount >= 2) {
+        this.$bks.openMenu({
+          event,
+          item: this.config,
+          options: [
+            {
+              name: 'Delete',
+              handler: () => this.$emit('remove-selected'),
+            },
+          ],
+        })
+        return
+      }
+
+      const canConnect = this.$store.getters.isUltimate
+        ? true
+        : !isUltimateType(this.displayConfig.connectionType)
+      const canWrite = this.config.canWrite ?? true;
+
+      const options = [
+        {
+          name: "View",
+          slug: 'view',
+          handler: (blob) => this.click(blob.item)
+        },
+        {
+          name: 'Connect',
+          slug: 'connect',
+          hideIf: !canConnect,
+          handler: (blob) => this.doubleClick(blob.item)
+        },
+        { type: "divider" },
+        {
+          name: this.pinned ? 'Unpin' : 'Pin',
+          handler: () => this.pinned ? this.unpin() : this.pin(),
+          hideIf: this.isRecentList,
+        },
+        { type: "divider", hideIf: this.isRecentList },
+        {
+          name: "Share",
+          slug: 'share',
+          handler: () => this.share(),
+          hideIf: !this.isCloud || !this.savedConnection || !this.savedConnection.id || this.isPersonal,
+        },
+        {
+          name: "Duplicate",
+          slug: 'duplicate',
+          handler: () => this.duplicate(),
+        },
+        {
+          name: `Copy ${this.connectionType}`,
+          handler: () => this.copyUrl(),
+        },
+        { type: "divider" },
+        {
+          name: "Rename",
+          slug: 'rename',
+          handler: () => {
+            this.rename = true;
+          },
+          hideIf: this.isRecentList || !canWrite,
+        },
+        {
+          name: "Move",
+          handler: () => {
+            this.trigger(AppEvent.openMoveFileModal, {
+              type: "connection",
+              value: this.config,
+            });
+          },
+          hideIf: this.isRecentList || this.folders.length === 0,
+        },
+        {
+          name: "Delete",
+          handler: () => this.remove(),
+        },
+      ].filter(({ hideIf }) => !hideIf)
+
+      this.$bks.openMenu({
+        event,
+        item: this.config,
+        options
+      })
+    },
+    async click() {
+      if (this.savedConnection) {
+        this.$emit('edit', this.savedConnection)
+      } else {
+        this.$emit('edit', this.config)
+      }
+    },
+    handleClick(event) {
+      if (event.metaKey || event.ctrlKey || event.shiftKey) {
+        this.$emit('select', this.config, event)
+        return
+      }
+      this.$emit('select', this.config, event)
+      this.click()
+    },
+    async doubleClick() {
+      if (this.savedConnection) {
+        this.$emit('doubleClick', this.savedConnection)
+      } else {
+        this.$emit('doubleClick', this.config)
+      }
+    },
+    remove() {
+      this.$emit('remove', this.config)
+    },
+    duplicate() {
+      this.$emit('duplicate', this.config)
+    },
+    share() {
+      this.trigger(AppEvent.openShareModal, {
+        id: this.savedConnection.id,
+        module: "data/connections",
+      });
+    },
+    async copyUrl() {
+      try {
+        await this.$copyText(this.$bks.buildConnectionString(this.displayConfig))
+        this.$noty.success(`The ${this.connectionType} was successfully copied!`)
+      } catch (err) {
+        this.$noty.success(`The ${this.connectionType} could not be copied!`)
+      }
+    },
+    pin() {
+      this.$store.dispatch('pinnedConnections/add', this.config);
+    },
+    unpin() {
+      this.$store.dispatch('pinnedConnections/remove', this.config);
+    },
+    async submitRename(name) {
+      if (!name || name === this.label) {
+        this.rename = false
+        return
+      }
+      try {
+        const updated = { ...this.savedConnection, name }
+        await this.$store.dispatch('data/connections/save', updated)
+      } catch (ex) {
+        this.$noty.error(`Rename error: ${ex.userMessage ?? ex.message}`)
+      } finally {
+        this.rename = false
+      }
+    },
+  }
+
+}
+</script>
+<style lang="scss" scoped>
+.list-item .list-item-btn .connection-title {
+  min-width: 0;
+
+  .title {
+    position: relative;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .editable-text {
+    width: 100%;
+  }
+}
+
+/** --depth is from Tree.vue */
+.list-group .list-item .list-item-btn {
+  padding-left: calc(var(--depth) * 1.15rem);
+}
+
+.connection-label {
+  margin-left: 0.5rem;
+}
+
+.btn-icon.pin, .btn-icon.pinned {
+  &:hover, &:focus {
+    background: transparent;
+  }
+}
+.btn-icon.pinned .bk-pin {
+  color: var(--primary-solid-bg-hover-a);
+}
+</style>
